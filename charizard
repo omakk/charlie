@@ -1,0 +1,38 @@
+#!/bin/bash
+
+BINDIR=bin
+BINARY=${BINDIR}/charlie
+BUILDDIR=build
+
+if [ $# -ne 1 ]; then
+    echo "Usage: ./charizard <command>"
+    exit 1
+fi
+
+function build() {
+    if [ ! -d build ]; then
+        cmake -H. -B${BUILDDIR}
+    fi
+    cmake --build ${BUILDDIR}
+}
+
+function run() {
+    ./${BINARY} $@
+}
+
+CMD=$1
+case $CMD in
+    "build" | "b" )
+        build
+        ;;
+    "run" | "r" )
+        if [ ! -d ${BINDIR} ] || [ ! -f ${BINARY} ]; then
+            build
+        fi
+        run $@
+        ;;
+    "clean" | "c" )
+        echo "Cleaning repository..."
+        rm -rf ${BINDIR} ${BUILDDIR}
+        ;;
+esac
