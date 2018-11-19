@@ -5,7 +5,7 @@ BINARY=${BINDIR}/charlie
 BUILDDIR=build
 
 if [ $# -ne 1 ]; then
-    echo "Usage: ./charizard <command>"
+    echo "Usage: ./faire <command>"
     exit 1
 fi
 
