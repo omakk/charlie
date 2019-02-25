@@ -14,24 +14,28 @@ public:
     void parse();
 
     /*
-     * FunctionDeclaration: "fn" IDENTIFIER '(' FunctionParameters* ')' FunctionReturnType+ Block
+     * FunctionDeclaration ::= "fn" IDENTIFIER '(' FunctionParameters* ')' IDENTIFIER Block
      */
-    void parse_function_definition();
+    void parse_function_declaration();
     /*
-     * Block:= '{' Statement* '}'
+     * Block ::= '{' Statement* '}'
      */
     void parse_block();
     /*
-     * Statement: BasicStatement ';'
+     * Statement ::= BasicStatement ';'
      */
     void parse_statement();
     /*
-     * BasicStatement: "return" Expression ';'
+     * BasicStatement ::=
+     *      ReturnStatement
      */
     void parse_basic_statement();
+    /*
+     * ReturnStatement ::= "return" Expression
+     */
     void parse_return_statement();
     /*
-     * Expression: IntegerLiteral
+     * Expression ::= IntegerLiteral
      */
     void parse_expression();
     void print_current_token();
