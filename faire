@@ -3,6 +3,7 @@
 BINDIR=bin
 BINARY=${BINDIR}/charlie
 BUILDDIR=build
+BUILDINFO=.build.info
 
 if [ $# -ne 1 ]; then
     echo "Usage: ./faire <command>"
@@ -14,6 +15,7 @@ function build() {
         cmake -H. -B${BUILDDIR}
     fi
     cmake --build ${BUILDDIR}
+    echo "LAST_MODIFIED=$(stat -c %Y ${BINARY})" > $BUILDINFO
 }
 
 function run() {
@@ -26,13 +28,23 @@ case $CMD in
         build
         ;;
     "run" | "r" )
-        if [ ! -d ${BINDIR} ] || [ ! -f ${BINARY} ]; then
+        MODIFIED=false
+        if [ -f ${BUILDINFO} ]; then
+            . $BUILDINFO
+            MODIFIED_TIME=`stat -c %Y ${BINARY}`
+            DIFF=$((${MODIFIED_TIME}-${LAST_MODIFIED}))
+            if [ ${DIFF} -gt 0 ]; then
+                MODIFIED=true
+            fi
+        fi
+        if [ ! -d ${BINDIR} ] || [ ! -f ${BINARY} ] || [ "${MODIFIED}" = true ]; then
+            echo "Building..."
             build
         fi
         run $@
         ;;
     "clean" | "c" )
         echo "Cleaning repository..."
-        rm -rf ${BINDIR} ${BUILDDIR}
+        rm -rf ${BINDIR} ${BUILDDIR} ${BUILDINFO}
         ;;
 esac

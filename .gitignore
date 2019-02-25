@@ -9,6 +9,7 @@ install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 
-### Generated Directories ###
+### Generated Files & Directories ###
 bin
 build
+.build.info
