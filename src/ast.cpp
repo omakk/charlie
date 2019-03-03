@@ -2,8 +2,8 @@
 
 namespace charlie {
 
-Module::Module(const std::string &name, std::unique_ptr<FunctionDef> func_def)
-    : mName(name), mFunctionDef(std::move(func_def)) {}
+Module::Module(const std::string name, std::unique_ptr<FunctionDef> func_def)
+    : mName(std::move(name)), mFunctionDef(std::move(func_def)) {}
 
 void Module::accept(AstVisitor &v) { v.visit(*this); }
 

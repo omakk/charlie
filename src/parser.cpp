@@ -14,7 +14,7 @@ std::unique_ptr<Module> Parser::parse() {
   auto func_def = parse_function_definition();
   if (!func_def)
     return nullptr;
-  return std::make_unique<Module>(mFileName, std::move(func_def));
+  return std::make_unique<Module>(std::string(mFileName), std::move(func_def));
 }
 
 /*

@@ -42,11 +42,11 @@ public:
 };
 
 class Module : public Ast {
-  std::string mName;
+  const std::string mName;
   std::unique_ptr<FunctionDef> mFunctionDef;
 
 public:
-  Module(const std::string &name, std::unique_ptr<FunctionDef> func_def);
+  Module(const std::string name, std::unique_ptr<FunctionDef> func_def);
 
   virtual void accept(AstVisitor &v) override;
 };
@@ -61,8 +61,8 @@ public:
 };
 
 class FunctionDef : public Ast {
-  std::string mName;
-  std::string mReturnType;
+  const std::string mName;
+  const std::string mReturnType;
   std::vector<std::string> mArguments;
   std::unique_ptr<Block> mBlock;
 
