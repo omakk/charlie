@@ -5,46 +5,113 @@ BINARY=${BINDIR}/charlie
 BUILDDIR=build
 BUILDINFO=.build.info
 
-if [ $# -ne 1 ]; then
-    echo "Usage: ./faire <command>"
-    exit 1
+# Bring variables from previous build into scope
+if [ -f ${BUILDINFO} ]; then
+    . $BUILDINFO
 fi
 
+function usage() {
+    echo "Usage: ./faire <command> <options>"
+    echo
+    echo "Commands:"
+    echo "    b, build <build_type>    Build project in <build_type> mode. Valid options are:"
+    echo "                             --debug:         Debug mode. This is the default"
+    echo "                             --release:       Release mode."
+    echo "                             --reldebinfo:    RelWithDebInfo mode. Build a release binary with debug info."
+    echo "                             --minsizerel:    MinSizeRel mode. Build a release binary with optimizations for size."
+    echo
+    echo "    r, run <build_type>      Run the target binary. This option will build the project if either"
+    echo "                             no binary is found or the binary has been modified. The same build"
+    echo "                             types specified under the `build` command apply. "
+    echo
+    echo "    c, clean                 Clean the project tree."
+    echo "    h, help                  Print this info."
+    exit 1
+}
+
 function build() {
-    if [ ! -d build ]; then
-        cmake -H. -B${BUILDDIR}
+    echo -e "\e[1;34mBuilding in $1 mode....\e[0m"
+    if [ ! -d build ] || [ "${BUILDTYPE}" != "${INFO_BUILDTYPE}" ] ; then
+        cmake -DCMAKE_BUILD_TYPE=$1 -H. -B${BUILDDIR}
     fi
     cmake --build ${BUILDDIR}
-    echo "LAST_MODIFIED=$(stat -c %Y ${BINARY})" > $BUILDINFO
+    truncate -s 0 $BUILDINFO
+    echo "INFO_MODIFIED=$(stat -c %Y ${BINARY})" >> $BUILDINFO
+    echo "INFO_BUILDTYPE=$1" >> $BUILDINFO
 }
 
 function run() {
     ./${BINARY} $@
 }
 
+if [ $# -lt 1 ] ; then
+    usage
+fi
+
 CMD=$1
 case $CMD in
     "build" | "b" )
-        build
+        shift
+        if [ "$1" = "--debug" ] ; then
+            BUILDTYPE="Debug"
+        elif [ "$1" = "--release" ] ; then
+            BUILDTYPE="Release"
+        elif [ "$1" = "--reldebinfo" ] ; then
+            BUILDTYPE="RelWithDebInfo"
+        elif [ "$1" = "--minsizerel" ] ; then
+            BUILDTYPE="MinSixeRel"
+        else
+            # Default build type is debug
+            BUILDTYPE="Debug"
+        fi
+        build "${BUILDTYPE}"
         ;;
     "run" | "r" )
-        MODIFIED=false
-        if [ -f ${BUILDINFO} ]; then
-            . $BUILDINFO
+        shift
+        if [ "$1" = "--debug" ] ; then
+            BUILDTYPE="Debug"
+        elif [ "$1" = "--release" ] ; then
+            BUILDTYPE="Release"
+        elif [ "$1" = "--reldebinfo" ] ; then
+            BUILDTYPE="RelWithDebInfo"
+        elif [ "$1" = "--minsizerel" ] ; then
+            BUILDTYPE="MinSixeRel"
+        else
+            # Default build type is debug
+            BUILDTYPE="Debug"
+        fi
+        if [ ! -d ${BINDIR} ] || [ ! -f ${BINARY} ] ; then
+            build "${BUILDTYPE}"
+            run $@
+            exit
+        fi
+        if [ -z $1 ] ; then
+            BUILDTYPE="${INFO_BUILDTYPE}"
+        fi
+        if [ "${BUILDTYPE}" = "${INFO_BUILDTYPE}" ] ; then
             MODIFIED_TIME=`stat -c %Y ${BINARY}`
-            DIFF=$((${MODIFIED_TIME}-${LAST_MODIFIED}))
-            if [ ${DIFF} -gt 0 ]; then
-                MODIFIED=true
+            DIFF=$((${MODIFIED_TIME}-${INFO_MODIFIED}))
+            if [ ${DIFF} -gt 0 ] ; then
+                build "${BUILDTYPE}"
             fi
+            run $@
+        else
+            build "${BUILDTYPE}"
+            run $@
         fi
-        if [ ! -d ${BINDIR} ] || [ ! -f ${BINARY} ] || [ "${MODIFIED}" = true ]; then
-            echo "Building..."
-            build
-        fi
-        run $@
         ;;
     "clean" | "c" )
         echo "Cleaning repository..."
         rm -rf ${BINDIR} ${BUILDDIR} ${BUILDINFO}
         ;;
+    "help" | "h" )
+        usage
+        ;;
+    *)
+        echo
+        echo -e "\e[1;91mUnrecognized command: '$CMD'"
+        echo -e "\e[0m"
+        usage
+        exit 1
+        ::
 esac
