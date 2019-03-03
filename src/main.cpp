@@ -4,14 +4,12 @@
 
 using namespace charlie;
 
-int main()
-{
-    std::cout << "Welcome to Charlie!" << '\n';
+int main() {
+  std::cout << "Welcome to Charlie!" << '\n';
 
+  Parser p("examples");
 
-    Parser p("examples");
+  auto module = p.parse();
 
-    p.parse();
-
-    return 0;
+  return 0;
 }
