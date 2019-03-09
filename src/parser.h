@@ -1,9 +1,9 @@
 #pragma once
 
-#include <memory>
-
 #include "ast.h"
 #include "lexer.h"
+
+#include <memory>
 
 namespace charlie {
 
@@ -42,9 +42,10 @@ public:
   std::unique_ptr<Expression> parse_expression();
 
   void print_current_token();
+
 private:
   std::string mFileName;
   std::unique_ptr<Lexer> mLexer;
-}; // class Parser
+};  // class Parser
 
-} // namespace charlie
+}  // namespace charlie

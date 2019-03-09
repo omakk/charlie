@@ -1,12 +1,13 @@
+#include "parser.h"
+
 #include <cassert>
 #include <iostream>
 #include <variant>
-#include "parser.h"
 
 namespace charlie {
 
-Parser::Parser(std::string file)
-    : mFileName(std::move(file)), mLexer(std::make_unique<Lexer>(mFileName)) {}
+Parser::Parser(std::string file) :
+    mFileName(std::move(file)), mLexer(std::make_unique<Lexer>(mFileName)) {}
 
 Parser::~Parser() {}
 
@@ -18,7 +19,8 @@ std::unique_ptr<Module> Parser::parse() {
 }
 
 /*
- * FunctionDeclaration ::= "fn" IDENTIFIER '(' FunctionParameters* ')' IDENTIFIER Block
+ * FunctionDeclaration ::= "fn" IDENTIFIER '(' FunctionParameters* ')'
+ * IDENTIFIER Block
  */
 std::unique_ptr<FunctionDef> Parser::parse_function_definition() {
   // "fun"
@@ -59,7 +61,8 @@ std::unique_ptr<FunctionDef> Parser::parse_function_definition() {
   if (!fn_name.empty() && !return_type.empty() && block) {
     return std::make_unique<FunctionDef>(std::move(fn_name),
                                          std::move(return_type),
-                                         std::move(args), std::move(block));
+                                         std::move(args),
+                                         std::move(block));
   } else {
     return nullptr;
   }
@@ -101,10 +104,10 @@ std::unique_ptr<Statement> Parser::parse_statement() {
   return std::move(stmt);
 }
 
- /*
-  * BasicStatement ::=
-  *      ReturnStatement
-  */
+/*
+ * BasicStatement ::=
+ *      ReturnStatement
+ */
 std::unique_ptr<Statement> Parser::parse_basic_statement() {
   std::unique_ptr<Statement> return_stmt = parse_return_statement();
   if (!return_stmt)
@@ -147,10 +150,11 @@ std::unique_ptr<Expression> Parser::parse_expression() {
 }
 
 void Parser::print_current_token() {
-    std::cout << "Token line number: "   << mLexer->mCurrentToken.line       << '\n'
-              << "Token starts at pos: " << mLexer->mCurrentToken.start_pos  << '\n'
-              << "Token has kind: "      << mLexer->mCurrentToken.kind       << '\n'
-              << "====="                                                     << '\n';
+  std::cout << "Token line number: " << mLexer->mCurrentToken.line << '\n'
+            << "Token starts at pos: " << mLexer->mCurrentToken.start_pos
+            << '\n'
+            << "Token has kind: " << mLexer->mCurrentToken.kind << '\n'
+            << "=====" << '\n';
 }
 
-} // namesapce charlie
+}  // namespace charlie
