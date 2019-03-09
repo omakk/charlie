@@ -1,6 +1,7 @@
-#include <iostream>
+#include "ast.h"
 #include "lexer.h"
 #include "parser.h"
+#include <iostream>
 
 using namespace charlie;
 
@@ -10,6 +11,10 @@ int main() {
   Parser p("examples");
 
   auto module = p.parse();
+
+  AstDisplayVisitor adv;
+
+  module->accept(adv);
 
   return 0;
 }
