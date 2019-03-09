@@ -104,6 +104,10 @@ case $CMD in
         echo "Cleaning repository..."
         rm -rf ${BINDIR} ${BUILDDIR} ${BUILDINFO}
         ;;
+    "format" | "fmt")
+        echo "Formatting src directory..."
+        clang-format -i -style=file src/*
+        ;;
     "help" | "h" )
         usage
         ;;
