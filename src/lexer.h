@@ -88,9 +88,7 @@ public:
   Token GetNextToken();
 
   // Gets the next token and compares its kind with |kind|.
-  //
-  // Returns true if the next token's is equal to |kind| and sets |tok| to the token.
-  // Returns false if the next token's kind is not equal to |kind|.
+  // |tok| is set to the next token.
   bool Expect(TokenKind kind, Token &tok);
 
 private:

@@ -12,30 +12,30 @@ AstDisplayVisitor::AstDisplayVisitor(std::ostream &display, uint16_t indent) :
     mDisplay(display), mIndent(indent) {}
 
 void AstDisplayVisitor::Visit(Module &mod) {
-  mod.mFunctionDef->Accept(*this);
+  mod.FuncDef()->Accept(*this);
 }
 
 void AstDisplayVisitor::Visit(FunctionDef &func_def) {
   std::stringstream s;
 
-  s << std::string(mIndent, ' ') << "fun " << func_def.mName << "(";
+  s << std::string(mIndent, ' ') << "fun " << func_def.Name() << "(";
   // TODO: Handle function arguments
   // if (!func_def.mArguments.empty()) {}
-  s << ") " << func_def.mReturnType << '\n';
+  s << ") " << func_def.ReturnType() << '\n';
 
   mDisplay << s.str();
 
-  func_def.mBlock->Accept(*this);
+  func_def.BodyBlock()->Accept(*this);
 }
 
 void AstDisplayVisitor::Visit(Block &block) {
   std::string spaces(mIndent, ' ');
   mDisplay << spaces << "{\n";
   mIndent += kDefaultIndentSpaces;
-  for (auto &s : block.mStatements) {
+  for (auto &s : block.Statements()) {
     switch (s->mStmtKind) {
-    case RETURN: {
-      auto return_stmt = dynamic_cast<ReturnStatement *>(s.get());
+    case StatementKind::RETURN: {
+      auto return_stmt = static_cast<ReturnStatement *>(s.get());
       return_stmt->Accept(*this);
       break;
     }
@@ -58,13 +58,13 @@ void AstDisplayVisitor::Visit(FloatLiteral &floatlit) {
 void AstDisplayVisitor::Visit(ReturnStatement &retstmt) {
   mDisplay << std::string(mIndent, ' ') << "return ";
   switch (retstmt.mReturnExpr->mExprKind) {
-  case INT_LITERAL: {
-    auto intlit = dynamic_cast<IntegerLiteral *>(retstmt.mReturnExpr.get());
+  case ExpressionKind::INT_LITERAL: {
+    auto intlit = static_cast<IntegerLiteral *>(retstmt.mReturnExpr.get());
     intlit->Accept(*this);
     break;
   }
-  case FLOAT_LITERAL: {
-    auto floatlit = dynamic_cast<FloatLiteral *>(retstmt.mReturnExpr.get());
+  case ExpressionKind::FLOAT_LITERAL: {
+    auto floatlit = static_cast<FloatLiteral *>(retstmt.mReturnExpr.get());
     floatlit->Accept(*this);
     break;
   }
@@ -72,6 +72,96 @@ void AstDisplayVisitor::Visit(ReturnStatement &retstmt) {
     break;
   };
   mDisplay << ";\n";
+}
+
+CodegenVisitor::CodegenVisitor() : mLLVMIrBuilder(mLLVMContext) {}
+
+void CodegenVisitor::Visit(Module &mod) {
+  mLLVMModule = std::make_unique<llvm::Module>(mod.Name(), mLLVMContext);
+  mod.FuncDef()->Accept(*this);
+  mLLVMModule->print(llvm::errs(), nullptr);
+}
+
+void CodegenVisitor::Visit(FunctionDef &func_def) {
+  llvm::Function *f = mLLVMModule->getFunction(func_def.Name());
+
+  if (!f) {
+    // TODO(oakkila): Assuming all return types are int32
+    llvm::Type *return_type = llvm::Type::getInt32Ty(mLLVMContext);
+    // TODO(oakkila): Assuming we dont have arguments
+    llvm::FunctionType *ft =
+      llvm::FunctionType::get(return_type, std::vector<llvm::Type *>(), false);
+    f = llvm::Function::Create(
+      ft, llvm::Function::ExternalLinkage, func_def.Name(), mLLVMModule.get());
+
+    unsigned i = 0;
+    for (auto &arg : f->args()) {
+      arg.setName(func_def.Args().at(i));
+    }
+  }
+
+  if (!f) {
+    mLLVMFunction = nullptr;
+  }
+
+  llvm::BasicBlock *bb = llvm::BasicBlock::Create(mLLVMContext, "entry", f);
+  mLLVMIrBuilder.SetInsertPoint(bb);
+
+  Block *body = func_def.BodyBlock().get();
+  if (body) {
+    body->Accept(*this);
+
+    llvm::Value *return_value = mLLVMValue;
+    mLLVMIrBuilder.CreateRet(return_value);
+
+    llvm::verifyFunction(*f);
+
+    mLLVMFunction = f;
+  } else {
+    f->eraseFromParent();
+    mLLVMFunction = nullptr;
+  }
+}
+
+void CodegenVisitor::Visit(Block &block) {
+  for (auto &s : block.Statements()) {
+    switch (s->mStmtKind) {
+    case StatementKind::RETURN: {
+      auto return_stmt = static_cast<ReturnStatement *>(s.get());
+      return_stmt->Accept(*this);
+      break;
+    }
+    default:
+      break;
+    };
+  }
+}
+
+void CodegenVisitor::Visit(IntegerLiteral &intlit) {
+  mLLVMValue = llvm::ConstantInt::get(
+    mLLVMContext, llvm::APInt(32 /*numBits*/, intlit.mInt, true /*isSigned*/));
+}
+
+void CodegenVisitor::Visit(FloatLiteral &floatlit) {
+  mLLVMValue =
+    llvm::ConstantFP::get(mLLVMContext, llvm::APFloat(floatlit.mFloat));
+}
+
+void CodegenVisitor::Visit(ReturnStatement &retstmt) {
+  switch (retstmt.mReturnExpr->mExprKind) {
+  case ExpressionKind::INT_LITERAL: {
+    auto intlit = static_cast<IntegerLiteral *>(retstmt.mReturnExpr.get());
+    intlit->Accept(*this);
+    break;
+  }
+  case ExpressionKind::FLOAT_LITERAL: {
+    auto floatlit = static_cast<FloatLiteral *>(retstmt.mReturnExpr.get());
+    floatlit->Accept(*this);
+    break;
+  }
+  default:
+    break;
+  };
 }
 
 Module::Module(const std::string name, std::unique_ptr<FunctionDef> func_def) :

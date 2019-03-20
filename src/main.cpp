@@ -18,5 +18,10 @@ int main() {
 
   module->Accept(adv);
 
+  std::cout << "\nCodegen from AST..." << '\n';
+  CodegenVisitor cv;
+
+  module->Accept(cv);
+
   return 0;
 }

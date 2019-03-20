@@ -41,10 +41,9 @@ public:
 class AstDisplayVisitor : public AstVisitor {
   std::ostream &mDisplay;
   uint16_t mIndent;
-
-public:
   static constexpr uint16_t kDefaultIndentSpaces = 2;
 
+public:
   AstDisplayVisitor(std::ostream &display = std::cout, uint16_t indent = 0);
 
   virtual void Visit(Module &mod) override;
@@ -53,6 +52,25 @@ public:
   virtual void Visit(IntegerLiteral &intlit) override;
   virtual void Visit(FloatLiteral &floatlit) override;
   virtual void Visit(ReturnStatement &retstmt) override;
+};
+
+class CodegenVisitor : public AstVisitor {
+  // LLVM objects
+  llvm::LLVMContext mLLVMContext;
+  llvm::IRBuilder<> mLLVMIrBuilder;
+  std::unique_ptr<llvm::Module> mLLVMModule;
+  llvm::Value *mLLVMValue;        // Set after any AST node codegen
+  llvm::Function *mLLVMFunction;  // Set after FunctionDef codegen
+
+public:
+  CodegenVisitor();
+
+  void Visit(Module &mod) override;
+  void Visit(Block &block) override;
+  void Visit(FunctionDef &func_def) override;
+  void Visit(IntegerLiteral &intlit) override;
+  void Visit(FloatLiteral &floatlit) override;
+  void Visit(ReturnStatement &retstmt) override;
 };
 
 //===----------------------------------------------------------------------===//
@@ -67,43 +85,70 @@ public:
 
 class Module : public Ast {
 public:
-  const std::string mName;
-  std::unique_ptr<FunctionDef> mFunctionDef;
-
   Module(const std::string name, std::unique_ptr<FunctionDef> func_def);
 
+  const std::string &Name() const {
+    return mName;
+  }
+  std::unique_ptr<FunctionDef> &FuncDef() {
+    return mFunctionDef;
+  }
+
   virtual void Accept(AstVisitor &v) override;
+
+private:
+  const std::string mName;
+  std::unique_ptr<FunctionDef> mFunctionDef;
 };
 
 class FunctionDef : public Ast {
 public:
-  const std::string mName;
-  const std::string mReturnType;
-  std::vector<std::string> mArguments;
-  std::unique_ptr<Block> mBlock;
-
   FunctionDef(std::string name,
               std::string return_type,
               std::vector<std::string> args,
               std::unique_ptr<Block> block);
 
+  const std::string &Name() const {
+    return mName;
+  }
+  const std::string &ReturnType() const {
+    return mReturnType;
+  }
+  const std::vector<std::string> &Args() const {
+    return mArguments;
+  }
+  std::unique_ptr<Block> &BodyBlock() {
+    return mBlock;
+  }
+
   virtual void Accept(AstVisitor &v) override;
+
+private:
+  const std::string mName;
+  const std::string mReturnType;
+  const std::vector<std::string> mArguments;
+  std::unique_ptr<Block> mBlock;
 };
 
 class Block : public Ast {
 public:
-  std::vector<std::unique_ptr<Statement>> mStatements;
-
   Block(std::vector<std::unique_ptr<Statement>> stmts);
 
+  const std::vector<std::unique_ptr<Statement>> &Statements() const {
+    return mStatements;
+  }
+
   virtual void Accept(AstVisitor &v) override;
+
+private:
+  const std::vector<std::unique_ptr<Statement>> mStatements;
 };
 
 //===----------------------------------------------------------------------===//
 // Expressions
 //===----------------------------------------------------------------------===//
 
-enum ExpressionKind {
+enum class ExpressionKind {
   INT_LITERAL,
   FLOAT_LITERAL,
 };
@@ -111,15 +156,17 @@ enum ExpressionKind {
 class Expression {
 public:
   ExpressionKind mExprKind;
-  Expression(ExpressionKind kind);
   virtual ~Expression() = default;
+
+protected:
+  Expression(ExpressionKind kind);
 };
 
 class IntegerLiteral : public Expression, public Ast {
 public:
   int mInt;
 
-  IntegerLiteral(int value, ExpressionKind kind = INT_LITERAL);
+  IntegerLiteral(int value, ExpressionKind kind = ExpressionKind::INT_LITERAL);
 
   virtual void Accept(AstVisitor &v) override;
 };
@@ -128,7 +175,8 @@ class FloatLiteral : public Expression, public Ast {
 public:
   float mFloat;
 
-  FloatLiteral(float value, ExpressionKind kind = FLOAT_LITERAL);
+  FloatLiteral(float value,
+               ExpressionKind kind = ExpressionKind::FLOAT_LITERAL);
 
   virtual void Accept(AstVisitor &v) override;
 };
@@ -137,15 +185,17 @@ public:
 // Statements
 //===----------------------------------------------------------------------===//
 
-enum StatementKind {
+enum class StatementKind {
   RETURN,
 };
 
 class Statement {
 public:
   StatementKind mStmtKind;
-  Statement(StatementKind kind);
   virtual ~Statement() = default;
+
+protected:
+  Statement(StatementKind kind);
 };
 
 class ReturnStatement : public Statement, public Ast {
@@ -153,7 +203,7 @@ public:
   std::unique_ptr<Expression> mReturnExpr;
 
   ReturnStatement(std::unique_ptr<Expression> expr,
-                  StatementKind kind = RETURN);
+                  StatementKind kind = StatementKind::RETURN);
 
   virtual void Accept(AstVisitor &v) override;
 };
