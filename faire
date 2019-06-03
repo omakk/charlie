@@ -14,19 +14,25 @@ function usage() {
     echo "Usage: ./faire <command> <options>"
     echo
     echo "Commands:"
-    echo "    b, build <build_type>    Build project in <build_type> mode. Valid options are:"
-    echo "                             --debug:         Debug mode. This is the default"
-    echo "                             --release:       Release mode."
-    echo "                             --reldebinfo:    RelWithDebInfo mode. Build a release binary with debug info."
-    echo "                             --minsizerel:    MinSizeRel mode. Build a release binary with optimizations for size."
     echo
-    echo "    r, run <build_type>      Run the target binary. This option will build the project if either"
-    echo "                             no binary is found or the binary has been modified. The same build"
-    echo "                             types specified under the `build` command apply. "
+    echo "b, build <build_type>  Build project in <build_type> mode."
     echo
-    echo "    c, clean                 Clean the project tree."
-    echo "    h, help                  Print this info."
-    exit 1
+    echo "                       Mode options are:"
+    echo "                       --debug:         Debug mode (default)"
+    echo "                       --release:       Release mode"
+    echo "                       --reldebinfo:    Release mode with debug info"
+    echo "                       --minsizerel:    Release mode optimized for size"
+    echo
+    echo "r, run <build_type>    Run the target binary"
+    echo
+    echo "                       Builds if either no binary is found"
+    echo "                       or the build type is different than"
+    echo "                       that of the binary"
+    echo
+    echo "fmt, format            Run clang format on the project"
+    echo
+    echo "c, clean               Clean the project tree."
+    echo "h, help                Print this info."
 }
 
 function build() {
@@ -46,6 +52,7 @@ function run() {
 
 if [ $# -lt 1 ] ; then
     usage
+    exit 0
 fi
 
 CMD=$1
@@ -83,22 +90,15 @@ case $CMD in
         if [ ! -d ${BINDIR} ] || [ ! -f ${BINARY} ] ; then
             build "${BUILDTYPE}"
             run $@
-            exit
+            exit 0
         fi
         if [ -z $1 ] ; then
             BUILDTYPE="${INFO_BUILDTYPE}"
         fi
-        if [ "${BUILDTYPE}" = "${INFO_BUILDTYPE}" ] ; then
-            MODIFIED_TIME=`stat -c %Y ${BINARY}`
-            DIFF=$((${MODIFIED_TIME}-${INFO_MODIFIED}))
-            if [ ${DIFF} -gt 0 ] ; then
-                build "${BUILDTYPE}"
-            fi
-            run $@
-        else
+        if [ "${BUILDTYPE}" != "${INFO_BUILDTYPE}" ] ; then
             build "${BUILDTYPE}"
-            run $@
         fi
+        run $@
         ;;
     "clean" | "c" )
         echo "Cleaning repository..."
@@ -110,6 +110,7 @@ case $CMD in
         ;;
     "help" | "h" )
         usage
+        exit 0
         ;;
     *)
         echo
