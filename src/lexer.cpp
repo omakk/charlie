@@ -9,23 +9,6 @@
 
 namespace charlie {
 
-const std::map<const std::string, TokenKind> Lexer::mKeywordsMap = {
-  {"fun", TOK_KEYWORD_FUN}, {"return", TOK_KEYWORD_RETURN}};
-
-const std::map<const char, TokenKind> Lexer::mPunctuationMap = {
-  {',', TOK_COMMA},
-  {'=', TOK_EQUAL},
-  {';', TOK_SEMICOLON},
-  {':', TOK_COLON},
-  {'.', TOK_DOT},
-  {'(', TOK_PAREN_LEFT},
-  {')', TOK_PAREN_RIGHT},
-  {'[', TOK_BRACKET_LEFT},
-  {']', TOK_BRACKET_RIGHT},
-  {'{', TOK_BRACE_LEFT},
-  {'}', TOK_BRACE_RIGHT},
-};
-
 Lexer::Lexer(const std::string &file) :
     mFileStream(std::ifstream(file)), mFilename(file), mCurrentLine(1),
     mCurrentPos(1) {}
@@ -104,14 +87,6 @@ void Lexer::expect_token(TokenKind kind) {
   }
 }
 
-TokenKind Lexer::is_keyword(std::string &s) {
-  std::map<const std::string, TokenKind>::const_iterator it =
-    mKeywordsMap.find(s);
-  if (it == mKeywordsMap.end())
-    return TOK_ERROR;
-  return it->second;
-}
-
 bool Lexer::handle_keyword_or_identifier() {
   char c;
   std::string s;
@@ -125,7 +100,7 @@ bool Lexer::handle_keyword_or_identifier() {
     s += c;
   }
 
-  k = is_keyword(s);
+  k = is_keyword(s.c_str());
   if (k == TOK_ERROR) {
     k = TOK_IDENTIFIER;
   }
@@ -223,17 +198,18 @@ bool Lexer::handle_operator() {
   return false;
 }
 bool Lexer::handle_punctuation() {
-  char c                                             = mFileStream.peek();
-  std::map<const char, TokenKind>::const_iterator it = mPunctuationMap.find(c);
-  if (it == mPunctuationMap.end())
+  char c = mFileStream.peek();
+
+  TokenKind tok = is_punc(c);
+  if (tok == TOK_ERROR)
     return false;
 
   mFileStream.ignore();  // Skip a character
 
   uint32_t start_pos = mCurrentPos;
   mCurrentPos++;
-  mCurrentValue.emplace<vPunctuation>(it->first);
-  mCurrentToken = {mCurrentLine, start_pos, it->second};
+  mCurrentValue.emplace<vPunctuation>(c);
+  mCurrentToken = {mCurrentLine, start_pos, tok};
 
   return true;
 }

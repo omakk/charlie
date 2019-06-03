@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <fstream>
 #include <map>
 #include <variant>
@@ -9,7 +10,8 @@ namespace charlie {
 enum TokenKind : uint32_t {
 
   // KEYWORDS
-  TOK_KEYWORD_USE    = 100,
+  TOK_KEYWORD_START  = 100,
+  TOK_KEYWORD_USE    = TOK_KEYWORD_START,
   TOK_KEYWORD_FUN    = 101,
   TOK_KEYWORD_LET    = 102,
   TOK_KEYWORD_FOR    = 103,
@@ -19,6 +21,8 @@ enum TokenKind : uint32_t {
   TOK_KEYWORD_STRUCT = 107,
   TOK_KEYWORD_ENUM   = 108,
   TOK_KEYWORD_RETURN = 109,
+  // Add keywords as they come and update TOK_KEYWORD_END
+  TOK_KEYWORD_END = 110,
 
   TOK_STRING        = 400,
   TOK_RAW_STRING    = 401,
@@ -38,7 +42,8 @@ enum TokenKind : uint32_t {
   TOK_OP_LE     = 508,
 
   // PUNCTUATION
-  TOK_COMMA         = 800,
+  TOK_PUNC_START    = 800,
+  TOK_COMMA         = TOK_PUNC_START,
   TOK_EQUAL         = 801,
   TOK_SEMICOLON     = 802,
   TOK_COLON         = 803,
@@ -49,6 +54,8 @@ enum TokenKind : uint32_t {
   TOK_BRACKET_RIGHT = 808,
   TOK_BRACE_LEFT    = 809,
   TOK_BRACE_RIGHT   = 810,
+  // Add punctuation as they come and update TOK_PUNC_END
+  TOK_PUNC_END = 811,
 
   TOK_EOF = (0x0E0F'E0F0),
 
@@ -64,9 +71,6 @@ struct Token {
 
 class Lexer {
 public:
-  static const std::map<const std::string, TokenKind> mKeywordsMap;
-  static const std::map<const char, TokenKind> mPunctuationMap;
-
   enum VariantValueIndex : uint8_t {
     vIdentifier = 0,
     vKeyword,
@@ -100,18 +104,23 @@ public:
   inline bool is_identifier() {
     return mCurrentToken.kind == TOK_IDENTIFIER;
   }
+
   inline bool is_int() {
     return mCurrentToken.kind == TOK_INT_LITERAL;
   }
+
   inline bool is_float() {
     return mCurrentToken.kind == TOK_FLOAT_LITERAL;
   }
+
   inline bool is_string() {
     return false;
   }
+
   inline bool is_operator() {
     return false;
   }
+
   inline bool is_punctuation() {
     return false;
   }
@@ -119,9 +128,64 @@ public:
   void expect_token(TokenKind kind);
 
 private:
+  constexpr static size_t kNumKeywords = TOK_KEYWORD_END - TOK_KEYWORD_START;
+  constexpr static struct {
+    const char *kw;
+    TokenKind tok;
+  } mKeywordMap[kNumKeywords] = {
+    {"if", TOK_KEYWORD_IF},
+    {"use", TOK_KEYWORD_USE},
+    {"fun", TOK_KEYWORD_FUN},
+    {"let", TOK_KEYWORD_LET},
+    {"for", TOK_KEYWORD_FOR},
+    {"else", TOK_KEYWORD_ELSE},
+    {"enum", TOK_KEYWORD_ENUM},
+    {"while", TOK_KEYWORD_WHILE},
+    {"struct", TOK_KEYWORD_STRUCT},
+    {"return", TOK_KEYWORD_RETURN},
+  };
+
+  constexpr static size_t kNumPunc = TOK_PUNC_END - TOK_PUNC_START;
+  constexpr static struct {
+    const char punc;
+    TokenKind tok;
+  } mPuncMap[kNumPunc] = {
+    {',', TOK_COMMA},
+    {'=', TOK_EQUAL},
+    {';', TOK_SEMICOLON},
+    {':', TOK_COLON},
+    {'.', TOK_DOT},
+    {'(', TOK_PAREN_LEFT},
+    {')', TOK_PAREN_RIGHT},
+    {'[', TOK_BRACKET_LEFT},
+    {']', TOK_BRACKET_RIGHT},
+    {'{', TOK_BRACE_LEFT},
+    {'}', TOK_BRACE_RIGHT},
+  };
+
   void skip_whitespace();
 
-  TokenKind is_keyword(std::string &s);
+  constexpr TokenKind is_keyword(const char *input) const noexcept {
+    TokenKind tok = TOK_ERROR;
+    for (int i = 0; i < kNumKeywords; ++i) {
+      if (!strcmp(input, mKeywordMap[i].kw)) {
+        tok = mKeywordMap[i].tok;
+        break;
+      }
+    }
+    return tok;
+  };
+
+  constexpr TokenKind is_punc(const char input) const noexcept {
+    TokenKind tok = TOK_ERROR;
+    for (int i = 0; i < kNumPunc; ++i) {
+      if (input == mPuncMap[i].punc) {
+        tok = mPuncMap[i].tok;
+        break;
+      }
+    }
+    return tok;
+  };
 
   bool handle_keyword_or_identifier();
   bool handle_float();
