@@ -12,40 +12,38 @@ public:
   Parser(std::string file);
   ~Parser();
 
-  std::unique_ptr<Module> parse();
+  std::unique_ptr<Module> Parse();
 
   /*
    * FunctionDefinition ::=
    *      "fn" IDENTIFIER '(' FunctionParameters* ')' IDENTIFIER Block
    */
-  std::unique_ptr<FunctionDef> parse_function_definition();
+  std::unique_ptr<FunctionDef> ParseFunctionDefintion();
   /*
    * Block ::= '{' Statement* '}'
    */
-  std::unique_ptr<Block> parse_block();
+  std::unique_ptr<Block> ParseBlock();
   /*
    * Statement ::= BasicStatement ';'
    */
-  std::unique_ptr<Statement> parse_statement();
+  std::unique_ptr<Statement> ParseStatement();
   /*
    * BasicStatement ::=
    *      ReturnStatement
    */
-  std::unique_ptr<Statement> parse_basic_statement();
+  std::unique_ptr<Statement> ParseBasicStatement();
   /*
    * ReturnStatement ::= "return" Expression
    */
-  std::unique_ptr<ReturnStatement> parse_return_statement();
+  std::unique_ptr<ReturnStatement> ParseReturnStatement();
   /*
    * Expression ::= IntegerLiteral
    */
-  std::unique_ptr<Expression> parse_expression();
-
-  void print_current_token();
+  std::unique_ptr<Expression> ParseExpression();
 
 private:
   std::string mFileName;
-  std::unique_ptr<Lexer> mLexer;
+  Lexer mLexer;
 };  // class Parser
 
 }  // namespace charlie

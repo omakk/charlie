@@ -2,7 +2,6 @@
 
 #include <cstring>
 #include <fstream>
-#include <map>
 #include <variant>
 
 namespace charlie {
@@ -10,50 +9,50 @@ namespace charlie {
 enum TokenKind : uint32_t {
 
   // KEYWORDS
-  TOK_KEYWORD_START  = 100,
-  TOK_KEYWORD_USE    = TOK_KEYWORD_START,
-  TOK_KEYWORD_FUN    = 101,
-  TOK_KEYWORD_LET    = 102,
-  TOK_KEYWORD_FOR    = 103,
-  TOK_KEYWORD_WHILE  = 104,
-  TOK_KEYWORD_IF     = 105,
-  TOK_KEYWORD_ELSE   = 106,
+  TOK_KEYWORD_START = 100,
+  TOK_KEYWORD_USE = TOK_KEYWORD_START,
+  TOK_KEYWORD_FUN = 101,
+  TOK_KEYWORD_LET = 102,
+  TOK_KEYWORD_FOR = 103,
+  TOK_KEYWORD_WHILE = 104,
+  TOK_KEYWORD_IF = 105,
+  TOK_KEYWORD_ELSE = 106,
   TOK_KEYWORD_STRUCT = 107,
-  TOK_KEYWORD_ENUM   = 108,
+  TOK_KEYWORD_ENUM = 108,
   TOK_KEYWORD_RETURN = 109,
   // Add keywords as they come and update TOK_KEYWORD_END
   TOK_KEYWORD_END = 110,
 
-  TOK_STRING        = 400,
-  TOK_RAW_STRING    = 401,
-  TOK_INT_LITERAL   = 402,
+  TOK_STRING = 400,
+  TOK_RAW_STRING = 401,
+  TOK_INT_LITERAL = 402,
   TOK_FLOAT_LITERAL = 403,
-  TOK_IDENTIFIER    = 404,
+  TOK_IDENTIFIER = 404,
 
   // OPERATORS
-  TOK_OP_PLUS   = 500,
-  TOK_OP_MINUS  = 501,
-  TOK_OP_MUL    = 502,
-  TOK_OP_DIV    = 503,
+  TOK_OP_PLUS = 500,
+  TOK_OP_MINUS = 501,
+  TOK_OP_MUL = 502,
+  TOK_OP_DIV = 503,
   TOK_OP_MODULO = 504,
-  TOK_OP_GT     = 505,
-  TOK_OP_GE     = 506,
-  TOK_OP_LT     = 507,
-  TOK_OP_LE     = 508,
+  TOK_OP_GT = 505,
+  TOK_OP_GE = 506,
+  TOK_OP_LT = 507,
+  TOK_OP_LE = 508,
 
   // PUNCTUATION
-  TOK_PUNC_START    = 800,
-  TOK_COMMA         = TOK_PUNC_START,
-  TOK_EQUAL         = 801,
-  TOK_SEMICOLON     = 802,
-  TOK_COLON         = 803,
-  TOK_DOT           = 804,
-  TOK_PAREN_LEFT    = 805,
-  TOK_PAREN_RIGHT   = 806,
-  TOK_BRACKET_LEFT  = 807,
+  TOK_PUNC_START = 800,
+  TOK_COMMA = TOK_PUNC_START,
+  TOK_EQUAL = 801,
+  TOK_SEMICOLON = 802,
+  TOK_COLON = 803,
+  TOK_DOT = 804,
+  TOK_PAREN_LEFT = 805,
+  TOK_PAREN_RIGHT = 806,
+  TOK_BRACKET_LEFT = 807,
   TOK_BRACKET_RIGHT = 808,
-  TOK_BRACE_LEFT    = 809,
-  TOK_BRACE_RIGHT   = 810,
+  TOK_BRACE_LEFT = 809,
+  TOK_BRACE_RIGHT = 810,
   // Add punctuation as they come and update TOK_PUNC_END
   TOK_PUNC_END = 811,
 
@@ -62,70 +61,37 @@ enum TokenKind : uint32_t {
   TOK_ERROR = (0x7FFF'FFFF)
 };
 
+struct Span {
+  uint32_t line_start;
+  uint32_t line_end;
+  uint32_t pos_start;
+  uint32_t pos_end;
+};
+
+using TokenValue = std::variant<int, float, char, std::string>;
 struct Token {
-  uint32_t line;
-  uint32_t start_pos;
+  Span span;
   TokenKind kind;
-  // TokenValue value;
+  TokenValue value;
 };
 
 class Lexer {
 public:
-  enum VariantValueIndex : uint8_t {
-    vIdentifier = 0,
-    vKeyword,
-    vStringLiteral,
-    vIntLiteral,
-    vFloatLiteral,
-    vPunctuation,
-    vOp
-  };
-  std::variant<std::string,
-               std::string,
-               std::string,
-               int,
-               float,
-               const char,
-               const char>
-    mCurrentValue;
-
-  std::ifstream mFileStream;
-  std::string mFilename;
-
-  Token mCurrentToken;
-  uint32_t mCurrentLine;
-  uint32_t mCurrentPos;
-
   Lexer(const std::string &file);
   ~Lexer();
 
-  void next_token();
+  // Sets |tok| to the next token.
+  //
+  // If there was en error in lexing then |tok| will be set to a token with
+  // kind TOK_ERROR and have a span pointing to the location of the token
+  void GetNextToken(Token &tok);
+  Token GetNextToken();
 
-  inline bool is_identifier() {
-    return mCurrentToken.kind == TOK_IDENTIFIER;
-  }
-
-  inline bool is_int() {
-    return mCurrentToken.kind == TOK_INT_LITERAL;
-  }
-
-  inline bool is_float() {
-    return mCurrentToken.kind == TOK_FLOAT_LITERAL;
-  }
-
-  inline bool is_string() {
-    return false;
-  }
-
-  inline bool is_operator() {
-    return false;
-  }
-
-  inline bool is_punctuation() {
-    return false;
-  }
-
-  void expect_token(TokenKind kind);
+  // Gets the next token and compares its kind with |kind|.
+  //
+  // Returns true if the next token's is equal to |kind| and sets |tok| to the token.
+  // Returns false if the next token's kind is not equal to |kind|.
+  bool Expect(TokenKind kind, Token &tok);
 
 private:
   constexpr static size_t kNumKeywords = TOK_KEYWORD_END - TOK_KEYWORD_START;
@@ -163,39 +129,27 @@ private:
     {'}', TOK_BRACE_RIGHT},
   };
 
-  void skip_whitespace();
+  std::ifstream mFileStream;
 
-  constexpr TokenKind is_keyword(const char *input) const noexcept {
-    TokenKind tok = TOK_ERROR;
-    for (int i = 0; i < kNumKeywords; ++i) {
-      if (!strcmp(input, mKeywordMap[i].kw)) {
-        tok = mKeywordMap[i].tok;
-        break;
-      }
-    }
-    return tok;
-  };
+  uint32_t mLine;
+  uint32_t mPos;
 
-  constexpr TokenKind is_punc(const char input) const noexcept {
-    TokenKind tok = TOK_ERROR;
-    for (int i = 0; i < kNumPunc; ++i) {
-      if (input == mPuncMap[i].punc) {
-        tok = mPuncMap[i].tok;
-        break;
-      }
-    }
-    return tok;
-  };
+  // Skip whitespaces where next character to be read is the first
+  // non-whitespace character
+  void SkipWhitespace();
 
-  bool handle_keyword_or_identifier();
-  bool handle_float();
-  bool handle_int();
-  bool handle_string();
-  bool handle_operator();
-  bool handle_punctuation();
+  TokenKind IsKeyword(const char *input) const noexcept;
+  TokenKind IsPunctuation(const char input) const noexcept;
+
+  // Handle an identifier.
+  // This also includes checking to see if the identifier is also a keyword
+  bool HandleIdentifier(Token &tok);
+  bool HandleFloat(Token &tok);
+  bool HandleInt(Token &tok);
+  bool HandleString(Token &tok);
+  bool HandleOperator(Token &tok);
+  bool HandlePunctuation(Token &tok);
 
 };  // class Lexer
-
-void fail(const char *msg, ...);
 
 }  // namespace charlie

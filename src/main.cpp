@@ -1,5 +1,4 @@
 #include "ast.h"
-#include "lexer.h"
 #include "parser.h"
 
 #include <iostream>
@@ -11,11 +10,11 @@ int main() {
 
   Parser p("examples");
 
-  auto module = p.parse();
+  auto module = p.Parse();
 
   AstDisplayVisitor adv;
 
-  module->accept(adv);
+  module->Accept(adv);
 
   return 0;
 }

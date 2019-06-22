@@ -24,12 +24,12 @@ class ReturnStatement;
 
 class AstVisitor {
 public:
-  virtual void visit(Module &ast)              = 0;
-  virtual void visit(Block &block)             = 0;
-  virtual void visit(FunctionDef &func_def)    = 0;
-  virtual void visit(IntegerLiteral &intlit)   = 0;
-  virtual void visit(FloatLiteral &floatlit)   = 0;
-  virtual void visit(ReturnStatement &retstmt) = 0;
+  virtual void Visit(Module &ast) = 0;
+  virtual void Visit(Block &block) = 0;
+  virtual void Visit(FunctionDef &func_def) = 0;
+  virtual void Visit(IntegerLiteral &intlit) = 0;
+  virtual void Visit(FloatLiteral &floatlit) = 0;
+  virtual void Visit(ReturnStatement &retstmt) = 0;
 
   virtual ~AstVisitor() = default;
 };
@@ -43,12 +43,12 @@ public:
 
   AstDisplayVisitor(std::ostream &display = std::cout, uint16_t indent = 0);
 
-  virtual void visit(Module &mod) override;
-  virtual void visit(Block &block) override;
-  virtual void visit(FunctionDef &func_def) override;
-  virtual void visit(IntegerLiteral &intlit) override;
-  virtual void visit(FloatLiteral &floatlit) override;
-  virtual void visit(ReturnStatement &retstmt) override;
+  virtual void Visit(Module &mod) override;
+  virtual void Visit(Block &block) override;
+  virtual void Visit(FunctionDef &func_def) override;
+  virtual void Visit(IntegerLiteral &intlit) override;
+  virtual void Visit(FloatLiteral &floatlit) override;
+  virtual void Visit(ReturnStatement &retstmt) override;
 };
 
 //===----------------------------------------------------------------------===//
@@ -57,8 +57,8 @@ public:
 
 class Ast {
 public:
-  virtual void accept(AstVisitor &v) = 0;
-  virtual ~Ast()                     = default;
+  virtual void Accept(AstVisitor &v) = 0;
+  virtual ~Ast() = default;
 };
 
 class Module : public Ast {
@@ -68,7 +68,7 @@ public:
 
   Module(const std::string name, std::unique_ptr<FunctionDef> func_def);
 
-  virtual void accept(AstVisitor &v) override;
+  virtual void Accept(AstVisitor &v) override;
 };
 
 class FunctionDef : public Ast {
@@ -83,7 +83,7 @@ public:
               std::vector<std::string> args,
               std::unique_ptr<Block> block);
 
-  virtual void accept(AstVisitor &v) override;
+  virtual void Accept(AstVisitor &v) override;
 };
 
 class Block : public Ast {
@@ -92,7 +92,7 @@ public:
 
   Block(std::vector<std::unique_ptr<Statement>> stmts);
 
-  virtual void accept(AstVisitor &v) override;
+  virtual void Accept(AstVisitor &v) override;
 };
 
 //===----------------------------------------------------------------------===//
@@ -117,7 +117,7 @@ public:
 
   IntegerLiteral(int value, ExpressionKind kind = INT_LITERAL);
 
-  virtual void accept(AstVisitor &v) override;
+  virtual void Accept(AstVisitor &v) override;
 };
 
 class FloatLiteral : public Expression, public Ast {
@@ -126,7 +126,7 @@ public:
 
   FloatLiteral(float value, ExpressionKind kind = FLOAT_LITERAL);
 
-  virtual void accept(AstVisitor &v) override;
+  virtual void Accept(AstVisitor &v) override;
 };
 
 //===----------------------------------------------------------------------===//
@@ -151,7 +151,7 @@ public:
   ReturnStatement(std::unique_ptr<Expression> expr,
                   StatementKind kind = RETURN);
 
-  virtual void accept(AstVisitor &v) override;
+  virtual void Accept(AstVisitor &v) override;
 };
 
 }  // namespace charlie

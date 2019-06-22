@@ -57,66 +57,66 @@ fi
 
 CMD=$1
 case $CMD in
-    "build" | "b" )
-        shift
-        if [ "$1" = "--debug" ] ; then
-            BUILDTYPE="Debug"
-        elif [ "$1" = "--release" ] ; then
-            BUILDTYPE="Release"
-        elif [ "$1" = "--reldebinfo" ] ; then
-            BUILDTYPE="RelWithDebInfo"
-        elif [ "$1" = "--minsizerel" ] ; then
-            BUILDTYPE="MinSixeRel"
-        else
-            # Default build type is debug
-            BUILDTYPE="Debug"
-        fi
+"build" | "b" )
+    shift
+    if [ "$1" = "--debug" ] ; then
+        BUILDTYPE="Debug"
+    elif [ "$1" = "--release" ] ; then
+        BUILDTYPE="Release"
+    elif [ "$1" = "--reldebinfo" ] ; then
+        BUILDTYPE="RelWithDebInfo"
+    elif [ "$1" = "--minsizerel" ] ; then
+        BUILDTYPE="MinSixeRel"
+    else
+        # Default build type is debug
+        BUILDTYPE="Debug"
+    fi
+    build "${BUILDTYPE}"
+    ;;
+"run" | "r" )
+    shift
+    if [ "$1" = "--debug" ] ; then
+        BUILDTYPE="Debug"
+    elif [ "$1" = "--release" ] ; then
+        BUILDTYPE="Release"
+    elif [ "$1" = "--reldebinfo" ] ; then
+        BUILDTYPE="RelWithDebInfo"
+    elif [ "$1" = "--minsizerel" ] ; then
+        BUILDTYPE="MinSixeRel"
+    else
+        # Default build type is debug
+        BUILDTYPE="Debug"
+    fi
+    if [ ! -d ${BINDIR} ] || [ ! -f ${BINARY} ] ; then
         build "${BUILDTYPE}"
-        ;;
-    "run" | "r" )
-        shift
-        if [ "$1" = "--debug" ] ; then
-            BUILDTYPE="Debug"
-        elif [ "$1" = "--release" ] ; then
-            BUILDTYPE="Release"
-        elif [ "$1" = "--reldebinfo" ] ; then
-            BUILDTYPE="RelWithDebInfo"
-        elif [ "$1" = "--minsizerel" ] ; then
-            BUILDTYPE="MinSixeRel"
-        else
-            # Default build type is debug
-            BUILDTYPE="Debug"
-        fi
-        if [ ! -d ${BINDIR} ] || [ ! -f ${BINARY} ] ; then
-            build "${BUILDTYPE}"
-            run $@
-            exit 0
-        fi
-        if [ -z $1 ] ; then
-            BUILDTYPE="${INFO_BUILDTYPE}"
-        fi
-        if [ "${BUILDTYPE}" != "${INFO_BUILDTYPE}" ] ; then
-            build "${BUILDTYPE}"
-        fi
         run $@
-        ;;
-    "clean" | "c" )
-        echo "Cleaning repository..."
-        rm -rf ${BINDIR} ${BUILDDIR} ${BUILDINFO}
-        ;;
-    "format" | "fmt")
-        echo "Formatting src directory..."
-        clang-format -i -style=file src/*
-        ;;
-    "help" | "h" )
-        usage
         exit 0
-        ;;
-    *)
-        echo
-        echo -e "\e[1;91mUnrecognized command: '$CMD'"
-        echo -e "\e[0m"
-        usage
-        exit 1
-        ::
+    fi
+    if [ -z $1 ] ; then
+        BUILDTYPE="${INFO_BUILDTYPE}"
+    fi
+    if [ "${BUILDTYPE}" != "${INFO_BUILDTYPE}" ] ; then
+        build "${BUILDTYPE}"
+    fi
+    run $@
+    ;;
+"clean" | "c" )
+    echo "Cleaning repository..."
+    rm -rf ${BINDIR} ${BUILDDIR} ${BUILDINFO}
+    ;;
+"format" | "fmt")
+    echo "Formatting src directory..."
+    clang-format -i -style=file src/*
+    ;;
+"help" | "h" )
+    usage
+    exit 0
+    ;;
+*)
+    echo
+    echo -e "\e[1;91mUnrecognized command: '$CMD'"
+    echo -e "\e[0m"
+    usage
+    exit 1
+    ::
 esac

@@ -1,18 +1,34 @@
 #include "parser.h"
 
 #include <cassert>
+#include <cstdarg>
 #include <iostream>
 #include <variant>
 
 namespace charlie {
 
+static void fail(const char *format_msg, ...) {
+  va_list args;
+  va_start(args, format_msg);
+  vfprintf(stderr, format_msg, args);
+  va_end(args);
+  exit(EXIT_FAILURE);
+}
+
+static void print_tok(const Token &tok) {
+  std::cout << "Token: Kind " << tok.kind
+            << " Span(Line:  " << tok.span.line_start << " -> "
+            << tok.span.line_end << ", Pos: " << tok.span.pos_start << " -> "
+            << tok.span.pos_end << ")\n";
+}
+
 Parser::Parser(std::string file) :
-    mFileName(std::move(file)), mLexer(std::make_unique<Lexer>(mFileName)) {}
+    mFileName(std::move(file)), mLexer(mFileName) {}
 
 Parser::~Parser() {}
 
-std::unique_ptr<Module> Parser::parse() {
-  auto func_def = parse_function_definition();
+std::unique_ptr<Module> Parser::Parse() {
+  auto func_def = ParseFunctionDefintion();
   if (!func_def)
     return nullptr;
   return std::make_unique<Module>(std::string(mFileName), std::move(func_def));
@@ -22,41 +38,73 @@ std::unique_ptr<Module> Parser::parse() {
  * FunctionDeclaration ::= "fn" IDENTIFIER '(' FunctionParameters* ')'
  * IDENTIFIER Block
  */
-std::unique_ptr<FunctionDef> Parser::parse_function_definition() {
+std::unique_ptr<FunctionDef> Parser::ParseFunctionDefintion() {
   // "fun"
-  mLexer->expect_token(TOK_KEYWORD_FUN);
-  print_current_token();
+  Token tok;
+  bool res = mLexer.Expect(TOK_KEYWORD_FUN, tok);
+  if (!res) {
+    fail("[Parse Error] %s:<%d:%d>: Expected keyword 'fun'\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
+  }
+  print_tok(tok);
 
   // IDENTIFIER (function name)
-  mLexer->next_token();
-  std::string fn_name;
-  if (mLexer->is_identifier()) {
-    fn_name = std::get<Lexer::vIdentifier>(mLexer->mCurrentValue);
-    std::cout << "DEBUG: Lexer consumed identifier: " << fn_name << '\n';
+  res = mLexer.Expect(TOK_IDENTIFIER, tok);
+  if (!res) {
+    fail("[Parse Error] %s:<%d:%d>: Expected identifier\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
   }
-  print_current_token();
+  std::string fn_name;
+  auto pvalue = std::get_if<std::string>(&tok.value);
+  if (pvalue)
+    fn_name = *pvalue;
+  std::cout << "DEBUG: Lexer consumed identifier: " << fn_name << '\n';
+  print_tok(tok);
 
   // '('
-  mLexer->expect_token(TOK_PAREN_LEFT);
-  print_current_token();
+  res = mLexer.Expect(TOK_PAREN_LEFT, tok);
+  if (!res) {
+    fail("[Parse Error] %s:<%d:%d>: Expected '('\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
+  }
+  print_tok(tok);
 
   std::vector<std::string> args;
-  // parse_function_parameters();
+  // ParseFunctionParameters();
 
   // ')'
-  mLexer->expect_token(TOK_PAREN_RIGHT);
-  print_current_token();
+  res = mLexer.Expect(TOK_PAREN_RIGHT, tok);
+  if (!res) {
+    fail("[Parse Error] %s:<%d:%d>: Expected ')'\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
+  }
+  print_tok(tok);
 
   // IDENTIFIER (return type)
-  mLexer->next_token();
-  std::string return_type;
-  if (mLexer->is_identifier()) {
-    return_type = std::get<Lexer::vIdentifier>(mLexer->mCurrentValue);
-    std::cout << "DEBUG: Lexer consumed identifier: " << return_type << '\n';
+  res = mLexer.Expect(TOK_IDENTIFIER, tok);
+  if (!res) {
+    fail("[Parse Error] %s:<%d:%d>: Expected identifier\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
   }
+  std::string return_type;
+  pvalue = std::get_if<std::string>(&tok.value);
+  if (pvalue)
+    return_type = *pvalue;
+  std::cout << "DEBUG: Lexer consumed identifier: " << return_type << '\n';
+  print_tok(tok);
 
   // Block
-  auto block = parse_block();
+  auto block = ParseBlock();
 
   if (!fn_name.empty() && !return_type.empty() && block) {
     return std::make_unique<FunctionDef>(std::move(fn_name),
@@ -71,20 +119,33 @@ std::unique_ptr<FunctionDef> Parser::parse_function_definition() {
 /*
  * Block ::= '{' Statement* '}'
  */
-std::unique_ptr<Block> Parser::parse_block() {
+std::unique_ptr<Block> Parser::ParseBlock() {
   // '{'
-  mLexer->expect_token(TOK_BRACE_LEFT);
-  print_current_token();
+  Token tok;
+  bool res = mLexer.Expect(TOK_BRACE_LEFT, tok);
+  if (!res) {
+    fail("[Parse Error] %s:<%d:%d>: Expected '{'\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
+  }
+  print_tok(tok);
 
   // TODO: Blocks need to parse multiple statements
   std::vector<std::unique_ptr<Statement>> stmts;
-  auto stmt = parse_statement();
+  auto stmt = ParseStatement();
   if (stmt)
     stmts.push_back(std::move(stmt));
 
   // '}'
-  mLexer->expect_token(TOK_BRACE_RIGHT);
-  print_current_token();
+  res = mLexer.Expect(TOK_BRACE_RIGHT, tok);
+  if (!res) {
+    fail("[Parse Error] %s:<%d:%d>: Expected '}'\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
+  }
+  print_tok(tok);
 
   return std::make_unique<Block>(std::move(stmts));
 }
@@ -92,15 +153,22 @@ std::unique_ptr<Block> Parser::parse_block() {
 /*
  * Statement ::= BasicStatement ';'
  */
-std::unique_ptr<Statement> Parser::parse_statement() {
+std::unique_ptr<Statement> Parser::ParseStatement() {
   // BasicStatement
-  std::unique_ptr<Statement> stmt = parse_basic_statement();
+  std::unique_ptr<Statement> stmt = ParseBasicStatement();
   if (!stmt)
     return nullptr;
 
   // ';'
-  mLexer->expect_token(TOK_SEMICOLON);
-  print_current_token();
+  Token tok;
+  bool res = mLexer.Expect(TOK_SEMICOLON, tok);
+  if (!res) {
+    fail("[Parse Error] %s:<%d:%d>: Expected ';'\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
+  }
+  print_tok(tok);
   return std::move(stmt);
 }
 
@@ -108,8 +176,8 @@ std::unique_ptr<Statement> Parser::parse_statement() {
  * BasicStatement ::=
  *      ReturnStatement
  */
-std::unique_ptr<Statement> Parser::parse_basic_statement() {
-  std::unique_ptr<Statement> return_stmt = parse_return_statement();
+std::unique_ptr<Statement> Parser::ParseBasicStatement() {
+  std::unique_ptr<Statement> return_stmt = ParseReturnStatement();
   if (!return_stmt)
     return nullptr;
   return std::move(return_stmt);
@@ -118,10 +186,17 @@ std::unique_ptr<Statement> Parser::parse_basic_statement() {
 /*
  * ReturnStatement ::= "return" Expression
  */
-std::unique_ptr<ReturnStatement> Parser::parse_return_statement() {
-  mLexer->expect_token(TOK_KEYWORD_RETURN);
-  print_current_token();
-  std::unique_ptr<Expression> expr = parse_expression();
+std::unique_ptr<ReturnStatement> Parser::ParseReturnStatement() {
+  Token tok;
+  bool res = mLexer.Expect(TOK_KEYWORD_RETURN, tok);
+  if (!res) {
+    fail("[Parse Error] %s:<%d:%d>: Expected keyword 'return'\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
+  }
+  print_tok(tok);
+  std::unique_ptr<Expression> expr = ParseExpression();
   if (!expr)
     return nullptr;
   return std::make_unique<ReturnStatement>(std::move(expr));
@@ -132,29 +207,32 @@ std::unique_ptr<ReturnStatement> Parser::parse_return_statement() {
  *      | IntegerLiteral
  *      | FloatLiteral
  */
-std::unique_ptr<Expression> Parser::parse_expression() {
-  mLexer->next_token();
-  if (mLexer->is_int()) {
-    int i = std::get<Lexer::vIntLiteral>(mLexer->mCurrentValue);
+std::unique_ptr<Expression> Parser::ParseExpression() {
+  Token tok = mLexer.GetNextToken();
+  if (tok.kind == TOK_INT_LITERAL) {
+    auto pvalue = std::get_if<int>(&tok.value);
+    if (!pvalue) {
+      std::cout << "DEBUG: Failed to get int variant from Token\n";
+      return nullptr;
+    }
+    int i = *pvalue;
     std::cout << "DEBUG: Lexer consumed int: " << i << '\n';
+    print_tok(tok);
     return std::make_unique<IntegerLiteral>(i);
-  } else if (mLexer->is_float()) {
-    float f = std::get<Lexer::vFloatLiteral>(mLexer->mCurrentValue);
+  } else if (tok.kind == TOK_FLOAT_LITERAL) {
+    auto pvalue = std::get_if<float>(&tok.value);
+    if (!pvalue) {
+      std::cout << "DEBUG: Failed to get float variant from Token\n";
+      return nullptr;
+    }
+    float f = *pvalue;
     std::cout << "DEBUG: Lexer consumed float: " << f << '\n';
-    print_current_token();
+    print_tok(tok);
     return std::make_unique<FloatLiteral>(f);
   } else {
     std::cout << "DEBUG: Lexer did not consume experssion\n";
     return nullptr;
   }
-}
-
-void Parser::print_current_token() {
-  std::cout << "Token line number: " << mLexer->mCurrentToken.line << '\n'
-            << "Token starts at pos: " << mLexer->mCurrentToken.start_pos
-            << '\n'
-            << "Token has kind: " << mLexer->mCurrentToken.kind << '\n'
-            << "=====" << '\n';
 }
 
 }  // namespace charlie

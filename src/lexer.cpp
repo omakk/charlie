@@ -1,96 +1,112 @@
 #include "lexer.h"
 
-#include <algorithm>
 #include <cctype>
-#include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
 
 namespace charlie {
 
+static Token ErrorToken(uint32_t line_start,
+                        uint32_t line_end,
+                        uint32_t pos_start,
+                        uint32_t pos_end) {
+  Span span {line_start, line_end, pos_start, pos_end};
+  return {span, TOK_ERROR, TokenValue()};
+}
+
 Lexer::Lexer(const std::string &file) :
-    mFileStream(std::ifstream(file)), mFilename(file), mCurrentLine(1),
-    mCurrentPos(1) {}
+    mFileStream(std::ifstream(file)), mLine(1), mPos(0) {}
 
 Lexer::~Lexer() {}
 
-void Lexer::next_token() {
-  skip_whitespace();
-  char c                  = mFileStream.peek();
-  bool next_token_success = false;
+void Lexer::GetNextToken(Token &tok) {
+  SkipWhitespace();
 
   if (mFileStream.eof()) {
-    mCurrentToken = {mCurrentLine, mCurrentPos, TOK_EOF};
-    return;
+    Span span {mLine, mLine, mPos, mPos};
+    tok = {span, TOK_EOF, TokenValue()};
   }
 
+  bool success = false;
+  char c = mFileStream.peek();
   if (isalpha(c)) {
-    next_token_success = handle_keyword_or_identifier();
+    success = HandleIdentifier(tok);
   } else if (isdigit(c)) {
-    // consume float or integer
+    // Consume float or integer
 
     // Try float first since a float may contain a valid integer
     // e.g. 120.02 - '120' is a valid integer
-    next_token_success = handle_float();
-    if (next_token_success)
+    success = HandleFloat(tok);
+    if (success)
       return;
 
-    next_token_success = handle_int();
+    success = HandleInt(tok);
   } else if (ispunct(c)) {
     if (c == '"') {
       // consume string
       // handle_string();
     } else {
       // consume operator or punctuation
-      next_token_success = handle_punctuation();
+      success = HandlePunctuation(tok);
     }
-  } else {
-    fail("[Lexer Error] %s <%d,%d>: Unexpected '%c' \n",
-         mFilename.c_str(),
-         mCurrentLine,
-         mCurrentPos,
-         c);
   }
 
-  if (!next_token_success) {
-    fail("[Lexer Error] %s <%d,%d>: Failed to lex \n",
-         mFilename.c_str(),
-         mCurrentLine,
-         mCurrentPos);
+  if (!success) {
+    fprintf(stderr, "[Lexer Error] <%d,%d>: Failed to lex! \n", mLine, mPos);
   }
 }
 
-void Lexer::skip_whitespace() {
+Token Lexer::GetNextToken() {
+  Token tok;
+  GetNextToken(tok);
+  return tok;
+}
+
+void Lexer::SkipWhitespace() {
   char c;
-  while ((c = mFileStream.peek())) {
-    if (!isspace(c)) {
+  while ((c = mFileStream.get()) && isspace(c)) {
+    if (c == '\n') {
+      mLine++;
+      mPos = 0;
+    } else {
+      mPos++;
+    }
+  }
+  mFileStream.unget();
+}
+
+bool Lexer::Expect(TokenKind kind, Token &tok) {
+  tok = GetNextToken();
+  return tok.kind == kind;
+}
+
+TokenKind Lexer::IsKeyword(const char *input) const noexcept {
+  TokenKind tok = TOK_ERROR;
+  for (int i = 0; i < kNumKeywords; ++i) {
+    if (!strcmp(input, mKeywordMap[i].kw)) {
+      tok = mKeywordMap[i].tok;
       break;
     }
-    if (c == '\n') {
-      mCurrentLine++;
-      mCurrentPos = 1;
-    } else {
-      mCurrentPos++;
+  }
+  return tok;
+}
+
+TokenKind Lexer::IsPunctuation(const char input) const noexcept {
+  TokenKind tok = TOK_ERROR;
+  for (int i = 0; i < kNumPunc; ++i) {
+    if (input == mPuncMap[i].punc) {
+      tok = mPuncMap[i].tok;
+      break;
     }
-    mFileStream.get();
   }
+  return tok;
 }
 
-void Lexer::expect_token(TokenKind kind) {
-  next_token();
-  if (mCurrentToken.kind != kind) {
-    fail("[Lexer Error] %s<%d,%d> :: Unexpected token\n",
-         mFilename.c_str(),
-         mCurrentLine,
-         mCurrentToken.start_pos);
-  }
-}
-
-bool Lexer::handle_keyword_or_identifier() {
+bool Lexer::HandleIdentifier(Token &tok) {
   char c;
-  std::string s;
-  TokenKind k = TOK_ERROR;
+  TokenValue value;
+  std::string &s = value.emplace<std::string>();
 
   while ((c = mFileStream.get())) {
     if (isspace(c) || !(isalnum(c) || c == '_')) {
@@ -100,63 +116,60 @@ bool Lexer::handle_keyword_or_identifier() {
     s += c;
   }
 
-  k = is_keyword(s.c_str());
-  if (k == TOK_ERROR) {
-    k = TOK_IDENTIFIER;
+  TokenKind kind = IsKeyword(s.c_str());
+  if (kind == TOK_ERROR) {
+    kind = TOK_IDENTIFIER;
   }
 
-  uint32_t start_pos = mCurrentPos;
-  mCurrentPos += s.length();
+  uint32_t pos_start = mPos + 1;
+  mPos += s.length();
 
-  if (k == TOK_IDENTIFIER) {
-    mCurrentValue.emplace<vIdentifier>(std::move(s));
-  } else {
-    mCurrentValue.emplace<vKeyword>(std::move(s));
-  }
-
-  mCurrentToken = {mCurrentLine, start_pos, k};
+  Span span {mLine, mLine, pos_start, mPos};
+  tok = {span, kind, value};
 
   return true;
 }
 
-bool Lexer::handle_int() {
-  char c;
-  uint32_t start_pos = mCurrentPos;
-  uint32_t pos       = 0;
-  int integer_value  = 0;
+bool Lexer::HandleInt(Token &tok) {
+  char c = mFileStream.get();
+  uint32_t pos_start = mPos + 1;
 
+  if (c == '0' && isdigit(mFileStream.peek())) {
+    tok = ErrorToken(mLine, mLine, pos_start, pos_start);
+    mFileStream.unget();
+    return false;
+  } else if (c == '0') {
+    Span span {mLine, mLine, pos_start, pos_start};
+    tok = {span, TOK_INT_LITERAL, TokenValue(0)};
+    mPos++;
+    return true;
+  }
+
+  TokenValue value;
+  int &i = value.emplace<int>();
+  i = c - '0';
+  int pos = 1;
   while ((c = mFileStream.get()) && isdigit(c)) {
-    if (pos == 0 && c == '0') {
-      if (isdigit(mFileStream.peek())) {
-        mCurrentToken = {mCurrentLine, start_pos, TOK_ERROR};
-        mFileStream.unget();
-        return false;
-      } else {
-        mCurrentValue.emplace<vIntLiteral>(0);
-        mCurrentToken = {mCurrentLine, start_pos, TOK_INT_LITERAL};
-        return true;
-      }
-    }
-
-    integer_value = (integer_value * 10) + (c - '0');
+    i = (i * 10) + (c - '0');
     pos++;
   }
 
   mFileStream.unget();
-  mCurrentValue.emplace<vIntLiteral>(integer_value);
-  mCurrentPos += pos;
-  mCurrentToken = {mCurrentLine, start_pos, TOK_INT_LITERAL};
+
+  mPos += pos;
+
+  Span span {mLine, mLine, pos_start, mPos};
+  tok = {span, TOK_INT_LITERAL, value};
 
   return true;
 }
 
-bool Lexer::handle_float() {
+bool Lexer::HandleFloat(Token &tok) {
   std::string s;
-  char c             = mFileStream.get();
-  uint32_t start_pos = mCurrentPos;
+  char c = mFileStream.get();
+  uint32_t pos_start = mPos + 1;
 
   if (c == '0' && mFileStream.peek() != '.') {
-    mCurrentToken = {mCurrentLine, start_pos, TOK_ERROR};
     mFileStream.unget();
     return false;
   }
@@ -168,7 +181,8 @@ bool Lexer::handle_float() {
   }
 
   if (c != '.') {
-    mCurrentToken = {mCurrentLine, start_pos, TOK_ERROR};
+    uint32_t pos_end = pos_start + (s.length() - 1);
+    tok = ErrorToken(mLine, mLine, pos_start, pos_end);
     // We should be peeking at the first character that we got
     for (int i = 0; i < s.length() + 1; ++i)
       mFileStream.unget();
@@ -181,45 +195,47 @@ bool Lexer::handle_float() {
     s += c;
   }
 
-  std::cout << "DEBUG: parsed float string " << s << '\n';
-  float f = atof(s.c_str());
-  std::cout << "DEBUG: parsed float " << f << '\n';
+  TokenValue value;
+  float &f = value.emplace<float>();
+  f = atof(s.c_str());
+  std::cout << "DEBUG: parsed float " << f << " from string " << s << '\n';
+
   mFileStream.unget();
-  mCurrentValue.emplace<vFloatLiteral>(f);
-  mCurrentToken = {mCurrentLine, start_pos, TOK_FLOAT_LITERAL};
-  mCurrentPos += s.length();
+
+  mPos += s.length();
+
+  Span span {mLine, mLine, pos_start, mPos};
+  tok = {span, TOK_FLOAT_LITERAL, value};
 
   return true;
 }
-bool Lexer::handle_string() {
+
+bool Lexer::HandleString(Token &tok) {
   return false;
 }
-bool Lexer::handle_operator() {
+
+bool Lexer::HandleOperator(Token &tok) {
   return false;
 }
-bool Lexer::handle_punctuation() {
+
+bool Lexer::HandlePunctuation(Token &tok) {
   char c = mFileStream.peek();
 
-  TokenKind tok = is_punc(c);
-  if (tok == TOK_ERROR)
+  TokenKind kind = IsPunctuation(c);
+  if (kind == TOK_ERROR) {
+    tok = ErrorToken(mLine, mLine, mPos, mPos);
     return false;
+  }
 
-  mFileStream.ignore();  // Skip a character
+  TokenValue value;
+  char &punc = value.emplace<char>();
+  punc = mFileStream.get();
+  mPos++;
 
-  uint32_t start_pos = mCurrentPos;
-  mCurrentPos++;
-  mCurrentValue.emplace<vPunctuation>(c);
-  mCurrentToken = {mCurrentLine, start_pos, tok};
+  Span span {mLine, mLine, mPos, mPos};
+  tok = {span, kind, value};
 
   return true;
-}
-
-void fail(const char *format_msg, ...) {
-  va_list args;
-  va_start(args, format_msg);
-  vfprintf(stderr, format_msg, args);
-  va_end(args);
-  exit(EXIT_FAILURE);
 }
 
 }  // namespace charlie
