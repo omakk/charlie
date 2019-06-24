@@ -1,5 +1,9 @@
 #include "ast.h"
 
+#include <llvm/ADT/APFloat.h>
+#include <llvm/ADT/APInt.h>
+#include <llvm/IR/Verifier.h>
+
 #include <sstream>
 
 namespace charlie {
