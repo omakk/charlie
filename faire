@@ -36,14 +36,32 @@ function usage() {
 }
 
 function build() {
-    echo -e "\e[1;34mBuilding in $1 mode....\e[0m"
-    if [ ! -d build ] || [ "${BUILDTYPE}" != "${INFO_BUILDTYPE}" ] ; then
-        cmake -DCMAKE_BUILD_TYPE=$1 -H. -B${BUILDDIR}
+    # Get build type
+    if [ "$1" = "--debug" ] ; then
+        BUILDTYPE="Debug"
+    elif [ "$1" = "--release" ] ; then
+        BUILDTYPE="Release"
+    elif [ "$1" = "--reldebinfo" ] ; then
+        BUILDTYPE="RelWithDebInfo"
+    elif [ "$1" = "--minsizerel" ] ; then
+        BUILDTYPE="MinSizeRel"
+    elif [ -n "${INFO_BUILDTYPE}" ] ; then
+        BUILDTYPE=${INFO_BUILDTYPE}
+    else
+        # Default build type is debug
+        BUILDTYPE="Debug"
+    fi
+
+    echo -e "\e[1;34mBuilding in ${BUILDTYPE} mode....\e[0m"
+
+    if [ ! -d "${BUILDDIR}" ] ; then
+        cmake -DCMAKE_BUILD_TYPE="${BUILDTYPE}" -H. -B${BUILDDIR}
     fi
     cmake --build ${BUILDDIR}
+
+    # Update build info
     truncate -s 0 $BUILDINFO
-    echo "INFO_MODIFIED=$(stat -c %Y ${BINARY})" >> $BUILDINFO
-    echo "INFO_BUILDTYPE=$1" >> $BUILDINFO
+    echo "INFO_BUILDTYPE=${BUILDTYPE}" >> $BUILDINFO
 }
 
 function run() {
@@ -59,44 +77,13 @@ CMD=$1
 case $CMD in
 "build" | "b" )
     shift
-    if [ "$1" = "--debug" ] ; then
-        BUILDTYPE="Debug"
-    elif [ "$1" = "--release" ] ; then
-        BUILDTYPE="Release"
-    elif [ "$1" = "--reldebinfo" ] ; then
-        BUILDTYPE="RelWithDebInfo"
-    elif [ "$1" = "--minsizerel" ] ; then
-        BUILDTYPE="MinSixeRel"
-    else
-        # Default build type is debug
-        BUILDTYPE="Debug"
-    fi
-    build "${BUILDTYPE}"
+    build $1
     ;;
 "run" | "r" )
     shift
-    if [ "$1" = "--debug" ] ; then
-        BUILDTYPE="Debug"
-    elif [ "$1" = "--release" ] ; then
-        BUILDTYPE="Release"
-    elif [ "$1" = "--reldebinfo" ] ; then
-        BUILDTYPE="RelWithDebInfo"
-    elif [ "$1" = "--minsizerel" ] ; then
-        BUILDTYPE="MinSixeRel"
-    else
-        # Default build type is debug
-        BUILDTYPE="Debug"
-    fi
     if [ ! -d ${BINDIR} ] || [ ! -f ${BINARY} ] ; then
-        build "${BUILDTYPE}"
-        run $@
-        exit 0
-    fi
-    if [ -z $1 ] ; then
-        BUILDTYPE="${INFO_BUILDTYPE}"
-    fi
-    if [ "${BUILDTYPE}" != "${INFO_BUILDTYPE}" ] ; then
-        build "${BUILDTYPE}"
+        echo -e "\e[1;34mDid not find ${BINARY}....\e[0m"
+        build $1
     fi
     run $@
     ;;
