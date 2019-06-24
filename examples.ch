@@ -1,6 +1,6 @@
 
 
 fun main() int {
-    return 120;
+    return 2.50;
 }
 
