@@ -1,18 +1,16 @@
 #include "parser.h"
 
-#include <cassert>
 #include <cstdarg>
 #include <iostream>
 #include <variant>
 
 namespace charlie {
 
-static void fail(const char *format_msg, ...) {
+static void warn(const char *format_msg, ...) {
   va_list args;
   va_start(args, format_msg);
   vfprintf(stderr, format_msg, args);
   va_end(args);
-  exit(EXIT_FAILURE);
 }
 
 static void print_tok(const Token &tok) {
@@ -56,20 +54,22 @@ std::unique_ptr<FunctionPrototype> Parser::ParseFunctionPrototype() {
   Token tok;
   bool res = mLexer.Expect(TOK_KEYWORD_FUN, tok);
   if (!res) {
-    fail("[Parse Error] %s:<%d:%d>: Expected keyword 'fun'\n",
+    warn("[Parse Error] %s:<%d:%d>: Expected keyword 'fun'\n",
          mFileName.c_str(),
          tok.span.line_start,
          tok.span.pos_start);
+    return nullptr;
   }
   print_tok(tok);
 
   // IDENTIFIER (function name)
   res = mLexer.Expect(TOK_IDENTIFIER, tok);
   if (!res) {
-    fail("[Parse Error] %s:<%d:%d>: Expected identifier\n",
+    warn("[Parse Error] %s:<%d:%d>: Expected identifier\n",
          mFileName.c_str(),
          tok.span.line_start,
          tok.span.pos_start);
+    return nullptr;
   }
   std::string fn_name;
   auto pvalue = std::get_if<std::string>(&tok.value);
@@ -81,10 +81,11 @@ std::unique_ptr<FunctionPrototype> Parser::ParseFunctionPrototype() {
   // '('
   res = mLexer.Expect(TOK_PAREN_LEFT, tok);
   if (!res) {
-    fail("[Parse Error] %s:<%d:%d>: Expected '('\n",
+    warn("[Parse Error] %s:<%d:%d>: Expected '('\n",
          mFileName.c_str(),
          tok.span.line_start,
          tok.span.pos_start);
+    return nullptr;
   }
   print_tok(tok);
 
@@ -94,21 +95,24 @@ std::unique_ptr<FunctionPrototype> Parser::ParseFunctionPrototype() {
   // ')'
   res = mLexer.Expect(TOK_PAREN_RIGHT, tok);
   if (!res) {
-    fail("[Parse Error] %s:<%d:%d>: Expected ')'\n",
+    warn("[Parse Error] %s:<%d:%d>: Expected ')'\n",
          mFileName.c_str(),
          tok.span.line_start,
          tok.span.pos_start);
+    return nullptr;
   }
   print_tok(tok);
 
   // IDENTIFIER (return type)
   res = mLexer.Expect(TOK_IDENTIFIER, tok);
   if (!res) {
-    fail("[Parse Error] %s:<%d:%d>: Expected identifier\n",
+    warn("[Parse Error] %s:<%d:%d>: Expected identifier\n",
          mFileName.c_str(),
          tok.span.line_start,
          tok.span.pos_start);
+    return nullptr;
   }
+
   std::string return_type;
   pvalue = std::get_if<std::string>(&tok.value);
   if (pvalue)
@@ -150,10 +154,11 @@ std::unique_ptr<Block> Parser::ParseBlock() {
   Token tok;
   bool res = mLexer.Expect(TOK_BRACE_LEFT, tok);
   if (!res) {
-    fail("[Parse Error] %s:<%d:%d>: Expected '{'\n",
+    warn("[Parse Error] %s:<%d:%d>: Expected '{'\n",
          mFileName.c_str(),
          tok.span.line_start,
          tok.span.pos_start);
+    return nullptr;
   }
   print_tok(tok);
 
@@ -166,10 +171,11 @@ std::unique_ptr<Block> Parser::ParseBlock() {
   // '}'
   res = mLexer.Expect(TOK_BRACE_RIGHT, tok);
   if (!res) {
-    fail("[Parse Error] %s:<%d:%d>: Expected '}'\n",
+    warn("[Parse Error] %s:<%d:%d>: Expected '}'\n",
          mFileName.c_str(),
          tok.span.line_start,
          tok.span.pos_start);
+    return nullptr;
   }
   print_tok(tok);
 
@@ -189,10 +195,11 @@ std::unique_ptr<Statement> Parser::ParseStatement() {
   Token tok;
   bool res = mLexer.Expect(TOK_SEMICOLON, tok);
   if (!res) {
-    fail("[Parse Error] %s:<%d:%d>: Expected ';'\n",
+    warn("[Parse Error] %s:<%d:%d>: Expected ';'\n",
          mFileName.c_str(),
          tok.span.line_start,
          tok.span.pos_start);
+    return nullptr;
   }
   print_tok(tok);
   return std::move(stmt);
@@ -216,10 +223,11 @@ std::unique_ptr<ReturnStatement> Parser::ParseReturnStatement() {
   Token tok;
   bool res = mLexer.Expect(TOK_KEYWORD_RETURN, tok);
   if (!res) {
-    fail("[Parse Error] %s:<%d:%d>: Expected keyword 'return'\n",
+    warn("[Parse Error] %s:<%d:%d>: Expected keyword 'return'\n",
          mFileName.c_str(),
          tok.span.line_start,
          tok.span.pos_start);
+    return nullptr;
   }
   print_tok(tok);
   std::unique_ptr<Expression> expr = ParseExpression();
