@@ -186,25 +186,24 @@ private:
 // Expressions
 //===----------------------------------------------------------------------===//
 
-enum class ExpressionKind {
-  INT_LITERAL,
-  FLOAT_LITERAL,
-};
-
 class Expression {
 public:
-  ExpressionKind mExprKind;
+  enum ExprKind {
+    INT_LITERAL,
+    FLOAT_LITERAL,
+  } mExprKind;
+
   virtual ~Expression() = default;
 
 protected:
-  Expression(ExpressionKind kind);
+  Expression(ExprKind kind);
 };
 
 class IntegerLiteral : public Expression, public Ast {
 public:
   int mInt;
 
-  IntegerLiteral(int value, ExpressionKind kind = ExpressionKind::INT_LITERAL);
+  IntegerLiteral(int value, ExprKind kind = INT_LITERAL);
 
   virtual void Accept(AstVisitor &v) override;
 };
@@ -213,8 +212,7 @@ class FloatLiteral : public Expression, public Ast {
 public:
   float mFloat;
 
-  FloatLiteral(float value,
-               ExpressionKind kind = ExpressionKind::FLOAT_LITERAL);
+  FloatLiteral(float value, ExprKind kind = FLOAT_LITERAL);
 
   virtual void Accept(AstVisitor &v) override;
 };
@@ -223,25 +221,23 @@ public:
 // Statements
 //===----------------------------------------------------------------------===//
 
-enum class StatementKind {
-  RETURN,
-};
-
 class Statement {
 public:
-  StatementKind mStmtKind;
+  enum StmtKind {
+    RETURN,
+  } mStmtKind;
+
   virtual ~Statement() = default;
 
 protected:
-  Statement(StatementKind kind);
+  Statement(StmtKind kind);
 };
 
 class ReturnStatement : public Statement, public Ast {
 public:
   std::unique_ptr<Expression> mReturnExpr;
 
-  ReturnStatement(std::unique_ptr<Expression> expr,
-                  StatementKind kind = StatementKind::RETURN);
+  ReturnStatement(std::unique_ptr<Expression> expr, StmtKind kind = RETURN);
 
   virtual void Accept(AstVisitor &v) override;
 };

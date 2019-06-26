@@ -45,7 +45,7 @@ void AstDisplayVisitor::Visit(Block &block) {
   mIndent += kDefaultIndentSpaces;
   for (auto &s : block.Statements()) {
     switch (s->mStmtKind) {
-    case StatementKind::RETURN: {
+    case Statement::RETURN: {
       auto return_stmt = static_cast<ReturnStatement *>(s.get());
       return_stmt->Accept(*this);
       break;
@@ -69,12 +69,12 @@ void AstDisplayVisitor::Visit(FloatLiteral &floatlit) {
 void AstDisplayVisitor::Visit(ReturnStatement &retstmt) {
   mDisplay << std::string(mIndent, ' ') << "return ";
   switch (retstmt.mReturnExpr->mExprKind) {
-  case ExpressionKind::INT_LITERAL: {
+  case Expression::INT_LITERAL: {
     auto intlit = static_cast<IntegerLiteral *>(retstmt.mReturnExpr.get());
     intlit->Accept(*this);
     break;
   }
-  case ExpressionKind::FLOAT_LITERAL: {
+  case Expression::FLOAT_LITERAL: {
     auto floatlit = static_cast<FloatLiteral *>(retstmt.mReturnExpr.get());
     floatlit->Accept(*this);
     break;
@@ -155,7 +155,7 @@ void CodegenVisitor::Visit(FunctionDefinition &func_def) {
 void CodegenVisitor::Visit(Block &block) {
   for (auto &s : block.Statements()) {
     switch (s->mStmtKind) {
-    case StatementKind::RETURN: {
+    case Statement::RETURN: {
       auto return_stmt = static_cast<ReturnStatement *>(s.get());
       return_stmt->Accept(*this);
       break;
@@ -178,12 +178,12 @@ void CodegenVisitor::Visit(FloatLiteral &floatlit) {
 
 void CodegenVisitor::Visit(ReturnStatement &retstmt) {
   switch (retstmt.mReturnExpr->mExprKind) {
-  case ExpressionKind::INT_LITERAL: {
+  case Expression::INT_LITERAL: {
     auto intlit = static_cast<IntegerLiteral *>(retstmt.mReturnExpr.get());
     intlit->Accept(*this);
     break;
   }
-  case ExpressionKind::FLOAT_LITERAL: {
+  case Expression::FLOAT_LITERAL: {
     auto floatlit = static_cast<FloatLiteral *>(retstmt.mReturnExpr.get());
     floatlit->Accept(*this);
     break;
@@ -233,26 +233,26 @@ void Block::Accept(AstVisitor &v) {
   v.Visit(*this);
 }
 
-Expression::Expression(ExpressionKind kind) : mExprKind(kind) {}
+Expression::Expression(ExprKind kind) : mExprKind(kind) {}
 
-IntegerLiteral::IntegerLiteral(int value, ExpressionKind kind) :
+IntegerLiteral::IntegerLiteral(int value, ExprKind kind) :
     Expression(kind), mInt(value) {}
 
 void IntegerLiteral::Accept(AstVisitor &v) {
   v.Visit(*this);
 }
 
-FloatLiteral::FloatLiteral(float value, ExpressionKind kind) :
+FloatLiteral::FloatLiteral(float value, ExprKind kind) :
     Expression(kind), mFloat(value) {}
 
 void FloatLiteral::Accept(AstVisitor &v) {
   v.Visit(*this);
 }
 
-Statement::Statement(StatementKind kind) : mStmtKind(kind) {}
+Statement::Statement(StmtKind kind) : mStmtKind(kind) {}
 
 ReturnStatement::ReturnStatement(std::unique_ptr<Expression> expr,
-                                 StatementKind kind) :
+                                 StmtKind kind) :
     Statement(kind),
     mReturnExpr(std::move(expr)) {}
 
