@@ -28,17 +28,30 @@ Parser::Parser(std::string file) :
 Parser::~Parser() {}
 
 std::unique_ptr<Module> Parser::Parse() {
-  auto func_def = ParseFunctionDefintion();
-  if (!func_def)
+  std::vector<std::unique_ptr<TopLevelDeclaration>> decls;
+  auto decl = ParseTopLevelDeclaration();
+  if (!decl)
     return nullptr;
-  return std::make_unique<Module>(std::string(mFileName), std::move(func_def));
+  decls.push_back(std::move(decl));
+  return std::make_unique<Module>(std::string(mFileName), std::move(decls));
 }
 
 /*
- * FunctionDeclaration ::= "fn" IDENTIFIER '(' FunctionParameters* ')'
- * IDENTIFIER Block
+ * TopLevelDeclaration ::= FunctionDefinition
  */
-std::unique_ptr<FunctionDef> Parser::ParseFunctionDefintion() {
+std::unique_ptr<TopLevelDeclaration> Parser::ParseTopLevelDeclaration() {
+  // TODO(oakkila): Only dealing with FunctionDefinition here
+  auto func_def = ParseFunctionDefintion();
+  if (!func_def)
+    return nullptr;
+  return func_def;
+}
+
+/*
+ * FunctionPrototype ::=
+ *      "fn" IDENTIFIER '(' FunctionParameters* ')' IDENTIFIER
+ */
+std::unique_ptr<FunctionPrototype> Parser::ParseFunctionPrototype() {
   // "fun"
   Token tok;
   bool res = mLexer.Expect(TOK_KEYWORD_FUN, tok);
@@ -103,17 +116,30 @@ std::unique_ptr<FunctionDef> Parser::ParseFunctionDefintion() {
   std::cout << "DEBUG: Lexer consumed identifier: " << return_type << '\n';
   print_tok(tok);
 
-  // Block
-  auto block = ParseBlock();
-
-  if (!fn_name.empty() && !return_type.empty() && block) {
-    return std::make_unique<FunctionDef>(std::move(fn_name),
-                                         std::move(return_type),
-                                         std::move(args),
-                                         std::move(block));
-  } else {
+  if (fn_name.empty() || return_type.empty()) {
     return nullptr;
   }
+
+  return std::make_unique<FunctionPrototype>(std::move(fn_name),
+                                             std::move(return_type),
+                                             std::move(args));
+}
+
+/*
+ * FunctionDeclaration ::= FunctionPrototype Block
+ */
+std::unique_ptr<FunctionDefinition> Parser::ParseFunctionDefintion() {
+  auto proto = ParseFunctionPrototype();
+  if (!proto)
+    return nullptr;
+
+  // Block
+  auto block = ParseBlock();
+  if (!block)
+    return nullptr;
+
+  return std::make_unique<FunctionDefinition>(std::move(proto),
+                                              std::move(block));
 }
 
 /*

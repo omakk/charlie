@@ -14,8 +14,10 @@ namespace charlie {
 // Forward declare
 class Ast;
 class Module;
+class TopLevelDeclaration;
 class Block;
-class FunctionDef;
+class FunctionPrototype;
+class FunctionDefinition;
 class Expression;
 class IntegerLiteral;
 class FloatLiteral;
@@ -30,7 +32,8 @@ class AstVisitor {
 public:
   virtual void Visit(Module &ast) = 0;
   virtual void Visit(Block &block) = 0;
-  virtual void Visit(FunctionDef &func_def) = 0;
+  virtual void Visit(FunctionPrototype &proto) = 0;
+  virtual void Visit(FunctionDefinition &func_def) = 0;
   virtual void Visit(IntegerLiteral &intlit) = 0;
   virtual void Visit(FloatLiteral &floatlit) = 0;
   virtual void Visit(ReturnStatement &retstmt) = 0;
@@ -46,12 +49,13 @@ class AstDisplayVisitor : public AstVisitor {
 public:
   AstDisplayVisitor(std::ostream &display = std::cout, uint16_t indent = 0);
 
-  virtual void Visit(Module &mod) override;
-  virtual void Visit(Block &block) override;
-  virtual void Visit(FunctionDef &func_def) override;
-  virtual void Visit(IntegerLiteral &intlit) override;
-  virtual void Visit(FloatLiteral &floatlit) override;
-  virtual void Visit(ReturnStatement &retstmt) override;
+  void Visit(Module &mod) override;
+  void Visit(Block &block) override;
+  void Visit(FunctionPrototype &proto) override;
+  void Visit(FunctionDefinition &func_def) override;
+  void Visit(IntegerLiteral &intlit) override;
+  void Visit(FloatLiteral &floatlit) override;
+  void Visit(ReturnStatement &retstmt) override;
 };
 
 class CodegenVisitor : public AstVisitor {
@@ -60,14 +64,15 @@ class CodegenVisitor : public AstVisitor {
   llvm::IRBuilder<> mLLVMIrBuilder;
   std::unique_ptr<llvm::Module> mLLVMModule;
   llvm::Value *mLLVMValue;        // Set after any AST node codegen
-  llvm::Function *mLLVMFunction;  // Set after FunctionDef codegen
+  llvm::Function *mLLVMFunction;  // Set after FunctionDefinition codegen
 
 public:
   CodegenVisitor();
 
   void Visit(Module &mod) override;
   void Visit(Block &block) override;
-  void Visit(FunctionDef &func_def) override;
+  void Visit(FunctionPrototype &proto) override;
+  void Visit(FunctionDefinition &func_def) override;
   void Visit(IntegerLiteral &intlit) override;
   void Visit(FloatLiteral &floatlit) override;
   void Visit(ReturnStatement &retstmt) override;
@@ -85,28 +90,29 @@ public:
 
 class Module : public Ast {
 public:
-  Module(const std::string name, std::unique_ptr<FunctionDef> func_def);
+  Module(const std::string name,
+         std::vector<std::unique_ptr<TopLevelDeclaration>> top_level_decls);
 
   const std::string &Name() const {
     return mName;
   }
-  std::unique_ptr<FunctionDef> &FuncDef() {
-    return mFunctionDef;
+  const std::vector<std::unique_ptr<TopLevelDeclaration>> &
+  TopLevelDecls() const {
+    return mTopLevelDecls;
   }
 
   virtual void Accept(AstVisitor &v) override;
 
 private:
   const std::string mName;
-  std::unique_ptr<FunctionDef> mFunctionDef;
+  const std::vector<std::unique_ptr<TopLevelDeclaration>> mTopLevelDecls;
 };
 
-class FunctionDef : public Ast {
+class FunctionPrototype : public Ast {
 public:
-  FunctionDef(std::string name,
-              std::string return_type,
-              std::vector<std::string> args,
-              std::unique_ptr<Block> block);
+  FunctionPrototype(std::string name,
+                    std::string return_type,
+                    std::vector<std::string> args);
 
   const std::string &Name() const {
     return mName;
@@ -117,9 +123,6 @@ public:
   const std::vector<std::string> &Args() const {
     return mArguments;
   }
-  std::unique_ptr<Block> &BodyBlock() {
-    return mBlock;
-  }
 
   virtual void Accept(AstVisitor &v) override;
 
@@ -127,6 +130,41 @@ private:
   const std::string mName;
   const std::string mReturnType;
   const std::vector<std::string> mArguments;
+};
+
+//===----------------------------------------------------------------------===//
+// Declarations
+//===----------------------------------------------------------------------===//
+
+class TopLevelDeclaration {
+public:
+  enum DeclKind {
+    FUNCTION_DEF,
+  } mDeclKind;
+
+  virtual ~TopLevelDeclaration() = default;
+
+protected:
+  TopLevelDeclaration(DeclKind kind);
+};
+
+class FunctionDefinition : public TopLevelDeclaration, public Ast {
+public:
+  FunctionDefinition(std::unique_ptr<FunctionPrototype> proto,
+                     std::unique_ptr<Block> block,
+                     DeclKind kind = FUNCTION_DEF);
+
+  std::unique_ptr<FunctionPrototype> &Prototype() {
+    return mProto;
+  }
+  std::unique_ptr<Block> &BodyBlock() {
+    return mBlock;
+  }
+
+  virtual void Accept(AstVisitor &v) override;
+
+private:
+  std::unique_ptr<FunctionPrototype> mProto;
   std::unique_ptr<Block> mBlock;
 };
 

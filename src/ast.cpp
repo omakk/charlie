@@ -12,19 +12,30 @@ AstDisplayVisitor::AstDisplayVisitor(std::ostream &display, uint16_t indent) :
     mDisplay(display), mIndent(indent) {}
 
 void AstDisplayVisitor::Visit(Module &mod) {
-  mod.FuncDef()->Accept(*this);
+  for (const auto &decl : mod.TopLevelDecls()) {
+    switch (decl->mDeclKind) {
+    case TopLevelDeclaration::FUNCTION_DEF: {
+      auto fdef = static_cast<FunctionDefinition *>(decl.get());
+      fdef->Accept(*this);
+      break;
+    }
+    default:
+      break;
+    };
+  }
 }
 
-void AstDisplayVisitor::Visit(FunctionDef &func_def) {
+void AstDisplayVisitor::Visit(FunctionPrototype &proto) {
   std::stringstream s;
-
-  s << std::string(mIndent, ' ') << "fun " << func_def.Name() << "(";
+  s << std::string(mIndent, ' ') << "fun " << proto.Name() << "(";
   // TODO: Handle function arguments
   // if (!func_def.mArguments.empty()) {}
-  s << ") " << func_def.ReturnType() << '\n';
-
+  s << ") " << proto.ReturnType() << '\n';
   mDisplay << s.str();
+}
 
+void AstDisplayVisitor::Visit(FunctionDefinition &func_def) {
+  func_def.Prototype()->Accept(*this);
   func_def.BodyBlock()->Accept(*this);
 }
 
@@ -78,13 +89,22 @@ CodegenVisitor::CodegenVisitor() : mLLVMIrBuilder(mLLVMContext) {}
 
 void CodegenVisitor::Visit(Module &mod) {
   mLLVMModule = std::make_unique<llvm::Module>(mod.Name(), mLLVMContext);
-  mod.FuncDef()->Accept(*this);
+  for (const auto &decl : mod.TopLevelDecls()) {
+    switch (decl->mDeclKind) {
+    case TopLevelDeclaration::FUNCTION_DEF: {
+      auto fdef = static_cast<FunctionDefinition *>(decl.get());
+      fdef->Accept(*this);
+      break;
+    }
+    default:
+      break;
+    };
+  }
   mLLVMModule->print(llvm::errs(), nullptr);
 }
 
-void CodegenVisitor::Visit(FunctionDef &func_def) {
-  llvm::Function *f = mLLVMModule->getFunction(func_def.Name());
-
+void CodegenVisitor::Visit(FunctionPrototype &proto) {
+  llvm::Function *f = mLLVMModule->getFunction(proto.Name());
   if (!f) {
     // TODO(oakkila): Assuming all return types are int32
     llvm::Type *return_type = llvm::Type::getInt32Ty(mLLVMContext);
@@ -92,16 +112,24 @@ void CodegenVisitor::Visit(FunctionDef &func_def) {
     llvm::FunctionType *ft =
       llvm::FunctionType::get(return_type, std::vector<llvm::Type *>(), false);
     f = llvm::Function::Create(
-      ft, llvm::Function::ExternalLinkage, func_def.Name(), mLLVMModule.get());
+      ft, llvm::Function::ExternalLinkage, proto.Name(), mLLVMModule.get());
 
     unsigned i = 0;
     for (auto &arg : f->args()) {
-      arg.setName(func_def.Args().at(i));
+      arg.setName(proto.Args().at(i));
+      i++;
     }
   }
+  mLLVMFunction = f;
+}
 
+void CodegenVisitor::Visit(FunctionDefinition &func_def) {
+  func_def.Prototype()->Accept(*this);
+
+  llvm::Function *f = mLLVMFunction;
   if (!f) {
     mLLVMFunction = nullptr;
+    return;
   }
 
   llvm::BasicBlock *bb = llvm::BasicBlock::Create(mLLVMContext, "entry", f);
@@ -117,10 +145,11 @@ void CodegenVisitor::Visit(FunctionDef &func_def) {
     llvm::verifyFunction(*f);
 
     mLLVMFunction = f;
-  } else {
-    f->eraseFromParent();
-    mLLVMFunction = nullptr;
+    return;
   }
+
+  f->eraseFromParent();
+  mLLVMFunction = nullptr;
 }
 
 void CodegenVisitor::Visit(Block &block) {
@@ -164,22 +193,36 @@ void CodegenVisitor::Visit(ReturnStatement &retstmt) {
   };
 }
 
-Module::Module(const std::string name, std::unique_ptr<FunctionDef> func_def) :
-    mName(std::move(name)), mFunctionDef(std::move(func_def)) {}
+Module::Module(
+  const std::string name,
+  std::vector<std::unique_ptr<TopLevelDeclaration>> top_level_decls) :
+    mName(std::move(name)),
+    mTopLevelDecls(std::move(top_level_decls)) {}
 
 void Module::Accept(AstVisitor &v) {
   v.Visit(*this);
 }
 
-FunctionDef::FunctionDef(std::string name,
-                         std::string return_type,
-                         std::vector<std::string> args,
-                         std::unique_ptr<Block> block) :
+FunctionPrototype::FunctionPrototype(std::string name,
+                                     std::string return_type,
+                                     std::vector<std::string> args) :
     mName(std::move(name)),
-    mReturnType(std::move(return_type)), mArguments(std::move(args)),
-    mBlock(std::move(block)) {}
+    mReturnType(std::move(return_type)),
+    mArguments(std::move(args)) {}
 
-void FunctionDef::Accept(AstVisitor &v) {
+void FunctionPrototype::Accept(AstVisitor &v) {
+  v.Visit(*this);
+}
+
+TopLevelDeclaration::TopLevelDeclaration(DeclKind kind) : mDeclKind(kind) {}
+
+FunctionDefinition::FunctionDefinition(std::unique_ptr<FunctionPrototype> proto,
+                                       std::unique_ptr<Block> block,
+                                       DeclKind kind) :
+    TopLevelDeclaration(kind),
+    mProto(std::move(proto)), mBlock(std::move(block)) {}
+
+void FunctionDefinition::Accept(AstVisitor &v) {
   v.Visit(*this);
 }
 

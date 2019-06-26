@@ -15,29 +15,45 @@ public:
   std::unique_ptr<Module> Parse();
 
   /*
-   * FunctionDefinition ::=
-   *      "fn" IDENTIFIER '(' FunctionParameters* ')' IDENTIFIER Block
+   * TopLevelDeclaration ::= FunctionDefinition
+   *
    */
-  std::unique_ptr<FunctionDef> ParseFunctionDefintion();
+  std::unique_ptr<TopLevelDeclaration> ParseTopLevelDeclaration();
+
+  /*
+   * FunctionPrototype ::=
+   *      "fn" IDENTIFIER '(' FunctionParameters* ')' IDENTIFIER
+   */
+  std::unique_ptr<FunctionPrototype> ParseFunctionPrototype();
+
+  /*
+   * FunctionDefinition ::= FunctionPrototype Block
+   */
+  std::unique_ptr<FunctionDefinition> ParseFunctionDefintion();
+
   /*
    * Block ::= '{' Statement* '}'
    */
   std::unique_ptr<Block> ParseBlock();
+
   /*
    * Statement ::= BasicStatement ';'
    */
   std::unique_ptr<Statement> ParseStatement();
+
   /*
-   * BasicStatement ::=
-   *      ReturnStatement
+   * BasicStatement ::= ReturnStatement
    */
   std::unique_ptr<Statement> ParseBasicStatement();
+
   /*
    * ReturnStatement ::= "return" Expression
    */
   std::unique_ptr<ReturnStatement> ParseReturnStatement();
+
   /*
    * Expression ::= IntegerLiteral
+   *              | FloatLiteral
    */
   std::unique_ptr<Expression> ParseExpression();
 
