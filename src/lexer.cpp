@@ -131,12 +131,13 @@ bool Lexer::HandleIdentifier(Token &tok) {
 }
 
 bool Lexer::HandleInt(Token &tok) {
+  int file_pos_start = mFileStream.tellg();
   char c = mFileStream.get();
   uint32_t pos_start = mPos + 1;
 
   if (c == '0' && isdigit(mFileStream.peek())) {
     tok = ErrorToken(mLine, mLine, pos_start, pos_start);
-    mFileStream.unget();
+    mFileStream.seekg(file_pos_start);
     return false;
   } else if (c == '0') {
     Span span {mLine, mLine, pos_start, pos_start};
@@ -153,7 +154,6 @@ bool Lexer::HandleInt(Token &tok) {
     i = (i * 10) + (c - '0');
     pos++;
   }
-
   mFileStream.unget();
 
   mPos += pos;
@@ -165,16 +165,16 @@ bool Lexer::HandleInt(Token &tok) {
 }
 
 bool Lexer::HandleFloat(Token &tok) {
-  std::string s;
-  char c = mFileStream.get();
+  int file_pos_start = mFileStream.tellg();
   uint32_t pos_start = mPos + 1;
 
+  char c = mFileStream.get();
   if (c == '0' && mFileStream.peek() != '.') {
-    mFileStream.unget();
+    mFileStream.seekg(file_pos_start);
     return false;
   }
 
-  s += c;
+  std::string s {c};
 
   while ((c = mFileStream.get()) && isdigit(c)) {
     s += c;
@@ -183,9 +183,7 @@ bool Lexer::HandleFloat(Token &tok) {
   if (c != '.') {
     uint32_t pos_end = pos_start + (s.length() - 1);
     tok = ErrorToken(mLine, mLine, pos_start, pos_end);
-    // We should be peeking at the first character that we got
-    for (int i = 0; i < s.length() + 1; ++i)
-      mFileStream.unget();
+    mFileStream.seekg(file_pos_start);
     return false;
   }
 
@@ -194,13 +192,12 @@ bool Lexer::HandleFloat(Token &tok) {
   while ((c = mFileStream.get()) && isdigit(c)) {
     s += c;
   }
+  mFileStream.unget();
 
   TokenValue value;
   float &f = value.emplace<float>();
   f = atof(s.c_str());
   std::cout << "DEBUG: parsed float " << f << " from string " << s << '\n';
-
-  mFileStream.unget();
 
   mPos += s.length();
 
