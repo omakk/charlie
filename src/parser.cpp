@@ -27,10 +27,10 @@ Parser::~Parser() {}
 
 std::unique_ptr<Module> Parser::Parse() {
   std::vector<std::unique_ptr<TopLevelDeclaration>> decls;
-  auto decl = ParseTopLevelDeclaration();
-  if (!decl)
-    return nullptr;
-  decls.push_back(std::move(decl));
+  for (auto decl = ParseTopLevelDeclaration(); decl != nullptr;
+       decl = ParseTopLevelDeclaration()) {
+    decls.push_back(std::move(decl));
+  }
   return std::make_unique<Module>(std::string(mFileName), std::move(decls));
 }
 
@@ -39,10 +39,23 @@ std::unique_ptr<Module> Parser::Parse() {
  */
 std::unique_ptr<TopLevelDeclaration> Parser::ParseTopLevelDeclaration() {
   // TODO(oakkila): Only dealing with FunctionDefinition here
-  auto func_def = ParseFunctionDefintion();
-  if (!func_def)
+  Token tok = mLexer.GetNextToken();
+  if (tok.kind == TOK_ERROR) {
     return nullptr;
-  return func_def;
+  }
+
+  switch (tok.kind) {
+  case TOK_KEYWORD_FUN: {
+    print_tok(tok);
+    auto func_def = ParseFunctionDefintion();
+    if (!func_def)
+      return nullptr;
+    return func_def;
+  }
+  default:
+    // TODO: report some approriate warning/error
+    return nullptr;
+  }
 }
 
 /*
@@ -50,20 +63,9 @@ std::unique_ptr<TopLevelDeclaration> Parser::ParseTopLevelDeclaration() {
  *      "fn" IDENTIFIER '(' FunctionParameters* ')' IDENTIFIER
  */
 std::unique_ptr<FunctionPrototype> Parser::ParseFunctionPrototype() {
-  // "fun"
-  Token tok;
-  bool res = mLexer.Expect(TOK_KEYWORD_FUN, tok);
-  if (!res) {
-    warn("[Parse Error] %s:<%d:%d>: Expected keyword 'fun'\n",
-         mFileName.c_str(),
-         tok.span.line_start,
-         tok.span.pos_start);
-    return nullptr;
-  }
-  print_tok(tok);
-
   // IDENTIFIER (function name)
-  res = mLexer.Expect(TOK_IDENTIFIER, tok);
+  Token tok;
+  bool res = mLexer.Expect(TOK_IDENTIFIER, tok);
   if (!res) {
     warn("[Parse Error] %s:<%d:%d>: Expected identifier\n",
          mFileName.c_str(),
@@ -124,9 +126,8 @@ std::unique_ptr<FunctionPrototype> Parser::ParseFunctionPrototype() {
     return nullptr;
   }
 
-  return std::make_unique<FunctionPrototype>(std::move(fn_name),
-                                             std::move(return_type),
-                                             std::move(args));
+  return std::make_unique<FunctionPrototype>(
+    std::move(fn_name), std::move(return_type), std::move(args));
 }
 
 /*
@@ -164,13 +165,13 @@ std::unique_ptr<Block> Parser::ParseBlock() {
 
   // TODO: Blocks need to parse multiple statements
   std::vector<std::unique_ptr<Statement>> stmts;
-  auto stmt = ParseStatement();
-  if (stmt)
+  for (auto stmt = ParseStatement(); stmt != nullptr; stmt = ParseStatement()) {
     stmts.push_back(std::move(stmt));
+  }
 
   // '}'
-  res = mLexer.Expect(TOK_BRACE_RIGHT, tok);
-  if (!res) {
+  tok = mLexer.GetToken();
+  if (tok.kind != TOK_BRACE_RIGHT) {
     warn("[Parse Error] %s:<%d:%d>: Expected '}'\n",
          mFileName.c_str(),
          tok.span.line_start,
@@ -210,26 +211,29 @@ std::unique_ptr<Statement> Parser::ParseStatement() {
  *      ReturnStatement
  */
 std::unique_ptr<Statement> Parser::ParseBasicStatement() {
-  std::unique_ptr<Statement> return_stmt = ParseReturnStatement();
-  if (!return_stmt)
+  Token tok = mLexer.GetNextToken();
+  if (tok.kind == TOK_ERROR) {
     return nullptr;
-  return std::move(return_stmt);
+  }
+
+  switch (tok.kind) {
+  case TOK_KEYWORD_RETURN: {
+    print_tok(tok);
+    auto return_stmt = ParseReturnStatement();
+    if (!return_stmt)
+      return nullptr;
+    return std::move(return_stmt);
+  }
+
+  default:
+    return nullptr;
+  }
 }
 
 /*
  * ReturnStatement ::= "return" Expression
  */
 std::unique_ptr<ReturnStatement> Parser::ParseReturnStatement() {
-  Token tok;
-  bool res = mLexer.Expect(TOK_KEYWORD_RETURN, tok);
-  if (!res) {
-    warn("[Parse Error] %s:<%d:%d>: Expected keyword 'return'\n",
-         mFileName.c_str(),
-         tok.span.line_start,
-         tok.span.pos_start);
-    return nullptr;
-  }
-  print_tok(tok);
   std::unique_ptr<Expression> expr = ParseExpression();
   if (!expr)
     return nullptr;
@@ -243,7 +247,12 @@ std::unique_ptr<ReturnStatement> Parser::ParseReturnStatement() {
  */
 std::unique_ptr<Expression> Parser::ParseExpression() {
   Token tok = mLexer.GetNextToken();
-  if (tok.kind == TOK_INT_LITERAL) {
+  if (tok.kind == TOK_ERROR) {
+    return nullptr;
+  }
+
+  switch (tok.kind) {
+  case TOK_INT_LITERAL: {
     auto pvalue = std::get_if<int>(&tok.value);
     if (!pvalue) {
       std::cout << "DEBUG: Failed to get int variant from Token\n";
@@ -253,7 +262,9 @@ std::unique_ptr<Expression> Parser::ParseExpression() {
     std::cout << "DEBUG: Lexer consumed int: " << i << '\n';
     print_tok(tok);
     return std::make_unique<IntegerLiteral>(i);
-  } else if (tok.kind == TOK_FLOAT_LITERAL) {
+  }
+
+  case TOK_FLOAT_LITERAL: {
     auto pvalue = std::get_if<float>(&tok.value);
     if (!pvalue) {
       std::cout << "DEBUG: Failed to get float variant from Token\n";
@@ -263,9 +274,11 @@ std::unique_ptr<Expression> Parser::ParseExpression() {
     std::cout << "DEBUG: Lexer consumed float: " << f << '\n';
     print_tok(tok);
     return std::make_unique<FloatLiteral>(f);
-  } else {
-    std::cout << "DEBUG: Lexer did not consume experssion\n";
+  }
+
+  default: {
     return nullptr;
+  }
   }
 }
 

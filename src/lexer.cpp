@@ -15,8 +15,13 @@ static Token ErrorToken(uint32_t line_start,
   return {span, TOK_ERROR, TokenValue()};
 }
 
+static Token DefaultToken() {
+  return {{}, TOK_NO_VALUE, TokenValue()};
+}
+
 Lexer::Lexer(const std::string &file) :
-    mFileStream(std::ifstream(file)), mLine(1), mPos(0) {}
+    mFileStream(std::ifstream(file)), mLine(1), mPos(0),
+    mLastToken(DefaultToken()) {}
 
 Lexer::~Lexer() {}
 
@@ -26,6 +31,8 @@ void Lexer::GetNextToken(Token &tok) {
   if (mFileStream.eof()) {
     Span span {mLine, mLine, mPos, mPos};
     tok = {span, TOK_EOF, TokenValue()};
+    mLastToken = tok;
+    return;
   }
 
   bool success = false;
@@ -38,8 +45,10 @@ void Lexer::GetNextToken(Token &tok) {
     // Try float first since a float may contain a valid integer
     // e.g. 120.02 - '120' is a valid integer
     success = HandleFloat(tok);
-    if (success)
+    if (success) {
+      mLastToken = tok;
       return;
+    }
 
     success = HandleInt(tok);
   } else if (ispunct(c)) {
@@ -49,8 +58,10 @@ void Lexer::GetNextToken(Token &tok) {
     } else {
       // consume operator or punctuation
       success = HandlePunctuation(tok);
-      if (success)
+      if (success) {
+        mLastToken = tok;
         return;
+      }
 
       success = HandleOperator(tok);
     }
@@ -59,12 +70,22 @@ void Lexer::GetNextToken(Token &tok) {
   if (!success) {
     fprintf(stderr, "[Lexer Error] <%d,%d>: Failed to lex! \n", mLine, mPos);
   }
+
+  mLastToken = tok;
 }
 
 Token Lexer::GetNextToken() {
   Token tok;
   GetNextToken(tok);
   return tok;
+}
+
+void Lexer::GetToken(Token &tok) {
+  tok = mLastToken;
+}
+
+Token Lexer::GetToken() {
+  return mLastToken;
 }
 
 void Lexer::SkipWhitespace() {
@@ -77,6 +98,10 @@ void Lexer::SkipWhitespace() {
       mPos++;
     }
   }
+
+  if (mFileStream.eof())
+    return;
+
   mFileStream.unget();
 }
 

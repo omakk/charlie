@@ -7,6 +7,7 @@
 namespace charlie {
 
 enum TokenKind : uint32_t {
+  TOK_NO_VALUE = 0,
 
   // KEYWORDS
   TOK_KEYWORD_START = 100,
@@ -84,10 +85,19 @@ public:
 
   // Sets |tok| to the next token.
   //
-  // If there was en error in lexing then |tok| will be set to a token with
-  // kind TOK_ERROR and have a span pointing to the location of the token
+  // If an error occured during lexing then |tok| will have kind TOK_ERROR.
+  // If we reached EOF then |tok| will have kind TOK_EOF.
   void GetNextToken(Token &tok);
+  // Returns the next token
+  //
+  // Return value will have kind TOK_ERROR on error
+  // Return value will have kind TOK_EOF on EOF
   Token GetNextToken();
+
+  // Sets |tok| to the last successful token.
+  void GetToken(Token &tok);
+  // Returns the last successful token
+  Token GetToken();
 
   // Gets the next token and compares its kind with |kind|.
   // |tok| is set to the next token.
@@ -148,6 +158,8 @@ private:
 
   uint32_t mLine;
   uint32_t mPos;
+
+  Token mLastToken;
 
   // Skip whitespaces where next character to be read is the first
   // non-whitespace character
