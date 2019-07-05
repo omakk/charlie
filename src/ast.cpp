@@ -207,8 +207,7 @@ FunctionPrototype::FunctionPrototype(std::string name,
                                      std::string return_type,
                                      std::vector<std::string> args) :
     mName(std::move(name)),
-    mReturnType(std::move(return_type)),
-    mArguments(std::move(args)) {}
+    mReturnType(std::move(return_type)), mArguments(std::move(args)) {}
 
 void FunctionPrototype::Accept(AstVisitor &v) {
   v.Visit(*this);

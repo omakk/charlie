@@ -10,18 +10,23 @@ int main() {
 
   Parser p("examples.ch");
 
-  std::cout << "\nParsing..." << '\n';
+  std::cout << "Parsing...\n";
   auto module = p.Parse();
+  if (!module) {
+    std::cerr << "Parse failed!" << '\n';
+    return 1;
+  }
+  std::cout << "Parse done\n\n";
 
-  std::cout << "\nPrinting AST..." << '\n';
+  std::cout << "Printing AST...\n";
   AstDisplayVisitor adv;
-
   module->Accept(adv);
+  std::cout << "Print done\n\n";
 
-  std::cout << "\nCodegen from AST..." << '\n';
+  std::cout << "Codegen from AST...\n";
   CodegenVisitor cv;
-
   module->Accept(cv);
+  std::cout << "Codegen done\n\n";
 
   return 0;
 }
