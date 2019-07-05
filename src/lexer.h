@@ -30,15 +30,17 @@ enum TokenKind : uint32_t {
   TOK_IDENTIFIER = 404,
 
   // OPERATORS
-  TOK_OP_PLUS = 500,
+  TOK_OP_START = 500,
+  TOK_OP_PLUS = TOK_OP_START,
   TOK_OP_MINUS = 501,
   TOK_OP_MUL = 502,
   TOK_OP_DIV = 503,
   TOK_OP_MODULO = 504,
   TOK_OP_GT = 505,
-  TOK_OP_GE = 506,
-  TOK_OP_LT = 507,
-  TOK_OP_LE = 508,
+  TOK_OP_LT = 506,
+  TOK_OP_EQ = 507,
+  // Add operators as they come and update TOK_OP_END
+  TOK_OP_END = 508,
 
   // PUNCTUATION
   TOK_PUNC_START = 800,
@@ -127,6 +129,21 @@ private:
     {'}', TOK_BRACE_RIGHT},
   };
 
+  constexpr static size_t kNumOps = TOK_OP_END - TOK_OP_START;
+  constexpr static struct {
+    const char op;
+    TokenKind tok;
+  } mOpMap[kNumOps] = {
+    {'+', TOK_OP_PLUS},
+    {'-', TOK_OP_MINUS},
+    {'*', TOK_OP_MUL},
+    {'/', TOK_OP_DIV},
+    {'%', TOK_OP_MODULO},
+    {'>', TOK_OP_GT},
+    {'<', TOK_OP_LT},
+    {'=', TOK_OP_EQ},
+  };
+
   std::ifstream mFileStream;
 
   uint32_t mLine;
@@ -138,6 +155,7 @@ private:
 
   TokenKind IsKeyword(const char *input) const noexcept;
   TokenKind IsPunctuation(const char input) const noexcept;
+  TokenKind IsOperator(const char input) const noexcept;
 
   // Handle an identifier.
   // This also includes checking to see if the identifier is also a keyword

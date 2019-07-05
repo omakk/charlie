@@ -49,6 +49,10 @@ void Lexer::GetNextToken(Token &tok) {
     } else {
       // consume operator or punctuation
       success = HandlePunctuation(tok);
+      if (success)
+        return;
+
+      success = HandleOperator(tok);
     }
   }
 
@@ -97,6 +101,17 @@ TokenKind Lexer::IsPunctuation(const char input) const noexcept {
   for (int i = 0; i < kNumPunc; ++i) {
     if (input == mPuncMap[i].punc) {
       tok = mPuncMap[i].tok;
+      break;
+    }
+  }
+  return tok;
+}
+
+TokenKind Lexer::IsOperator(const char input) const noexcept {
+  TokenKind tok = TOK_ERROR;
+  for (int i = 0; i < kNumOps; ++i) {
+    if (input == mOpMap[i].op) {
+      tok = mOpMap[i].tok;
       break;
     }
   }
@@ -212,7 +227,23 @@ bool Lexer::HandleString(Token &tok) {
 }
 
 bool Lexer::HandleOperator(Token &tok) {
-  return false;
+  char c = mFileStream.peek();
+
+  TokenKind kind = IsOperator(c);
+  if (kind == TOK_ERROR) {
+    tok = ErrorToken(mLine, mLine, mPos, mPos);
+    return false;
+  }
+
+  TokenValue value;
+  char &punc = value.emplace<char>();
+  punc = mFileStream.get();
+  mPos++;
+
+  Span span {mLine, mLine, mPos, mPos};
+  tok = {span, kind, value};
+
+  return true;
 }
 
 bool Lexer::HandlePunctuation(Token &tok) {
