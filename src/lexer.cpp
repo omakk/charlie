@@ -7,12 +7,21 @@
 
 namespace charlie {
 
+static Token MakeToken(uint32_t line_start,
+                       uint32_t line_end,
+                       uint32_t pos_start,
+                       uint32_t pos_end,
+                       TokenKind kind,
+                       TokenValue value) {
+  Span span {line_start, line_end, pos_start, pos_end};
+  return {span, kind, value};
+}
+
 static Token ErrorToken(uint32_t line_start,
                         uint32_t line_end,
                         uint32_t pos_start,
                         uint32_t pos_end) {
-  Span span {line_start, line_end, pos_start, pos_end};
-  return {span, TOK_ERROR, TokenValue()};
+  return MakeToken(line_start, line_end, pos_start, pos_end, TOK_ERROR, TokenValue());
 }
 
 static Token DefaultToken() {
@@ -29,8 +38,7 @@ void Lexer::GetNextToken(Token &tok) {
   SkipWhitespace();
 
   if (mFileStream.eof()) {
-    Span span {mLine, mLine, mPos, mPos};
-    tok = {span, TOK_EOF, TokenValue()};
+    tok = MakeToken(mLine, mLine, mPos, mPos, TOK_EOF, TokenValue());
     mLastToken = tok;
     return;
   }
@@ -164,8 +172,7 @@ bool Lexer::HandleIdentifier(Token &tok) {
   uint32_t pos_start = mPos + 1;
   mPos += s.length();
 
-  Span span {mLine, mLine, pos_start, mPos};
-  tok = {span, kind, value};
+  tok = MakeToken(mLine, mLine, pos_start, mPos, kind, value);
 
   return true;
 }
@@ -180,8 +187,7 @@ bool Lexer::HandleInt(Token &tok) {
     mFileStream.seekg(file_pos_start);
     return false;
   } else if (c == '0') {
-    Span span {mLine, mLine, pos_start, pos_start};
-    tok = {span, TOK_INT_LITERAL, TokenValue(0)};
+    tok = MakeToken(mLine, mLine, pos_start, pos_start, TOK_INT_LITERAL, TokenValue(0));
     mPos++;
     return true;
   }
@@ -198,8 +204,7 @@ bool Lexer::HandleInt(Token &tok) {
 
   mPos += pos;
 
-  Span span {mLine, mLine, pos_start, mPos};
-  tok = {span, TOK_INT_LITERAL, value};
+  tok = MakeToken(mLine, mLine, pos_start, mPos, TOK_INT_LITERAL, value);
 
   return true;
 }
@@ -241,8 +246,7 @@ bool Lexer::HandleFloat(Token &tok) {
 
   mPos += s.length();
 
-  Span span {mLine, mLine, pos_start, mPos};
-  tok = {span, TOK_FLOAT_LITERAL, value};
+  tok = MakeToken(mLine, mLine, pos_start, mPos, TOK_FLOAT_LITERAL, value);
 
   return true;
 }
@@ -265,8 +269,7 @@ bool Lexer::HandleOperator(Token &tok) {
   punc = mFileStream.get();
   mPos++;
 
-  Span span {mLine, mLine, mPos, mPos};
-  tok = {span, kind, value};
+  tok = MakeToken(mLine, mLine, mPos, mPos, kind, value);
 
   return true;
 }
@@ -285,9 +288,7 @@ bool Lexer::HandlePunctuation(Token &tok) {
   punc = mFileStream.get();
   mPos++;
 
-  Span span {mLine, mLine, mPos, mPos};
-  tok = {span, kind, value};
-
+  tok = MakeToken(mLine, mLine, mPos, mPos, kind, value);
   return true;
 }
 
