@@ -17,7 +17,7 @@ static void print_tok(const Token &tok) {
   std::cout << "Token: Kind " << tok.kind
             << " Span(Line:  " << tok.span.line_start << " -> "
             << tok.span.line_end << ", Pos: " << tok.span.pos_start << " -> "
-            << tok.span.pos_end << ")\n";
+            << tok.span.pos_end << ") \"" << GetTokenName(tok.kind) << "\"\n";
 }
 
 Parser::Parser(std::string file) :

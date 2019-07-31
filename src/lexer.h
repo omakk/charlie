@@ -78,6 +78,8 @@ struct Token {
   TokenValue value;
 };
 
+const char *GetTokenName(TokenKind kind);
+
 class Lexer {
 public:
   Lexer(const std::string &file);
