@@ -21,7 +21,8 @@ static Token ErrorToken(uint32_t line_start,
                         uint32_t line_end,
                         uint32_t pos_start,
                         uint32_t pos_end) {
-  return MakeToken(line_start, line_end, pos_start, pos_end, TOK_ERROR, TokenValue());
+  return MakeToken(
+    line_start, line_end, pos_start, pos_end, TOK_ERROR, TokenValue());
 }
 
 static Token DefaultToken() {
@@ -29,50 +30,49 @@ static Token DefaultToken() {
 }
 
 const char *GetTokenName(TokenKind kind) {
-    const char *name = "";
-    switch (kind) {
-    case TOK_KEYWORD_USE: name = "use"; break;
-    case TOK_KEYWORD_FUN: name = "fun"; break;
-    case TOK_KEYWORD_LET: name = "let"; break;
-    case TOK_KEYWORD_FOR: name = "for"; break;
-    case TOK_KEYWORD_WHILE: name = "while"; break;
-    case TOK_KEYWORD_IF: name = "if"; break;
-    case TOK_KEYWORD_ELSE: name = "else"; break;
-    case TOK_KEYWORD_STRUCT: name = "struct"; break;
-    case TOK_KEYWORD_ENUM: name = "enum"; break;
-    case TOK_KEYWORD_RETURN: name = "return"; break;
+  const char *name = "";
+  switch (kind) {
+  case TOK_KEYWORD_USE: name = "use"; break;
+  case TOK_KEYWORD_FUN: name = "fun"; break;
+  case TOK_KEYWORD_LET: name = "let"; break;
+  case TOK_KEYWORD_FOR: name = "for"; break;
+  case TOK_KEYWORD_WHILE: name = "while"; break;
+  case TOK_KEYWORD_IF: name = "if"; break;
+  case TOK_KEYWORD_ELSE: name = "else"; break;
+  case TOK_KEYWORD_STRUCT: name = "struct"; break;
+  case TOK_KEYWORD_ENUM: name = "enum"; break;
+  case TOK_KEYWORD_RETURN: name = "return"; break;
 
-    case TOK_STRING: name = "string"; break;
-    case TOK_RAW_STRING: name = "raw string"; break;
-    case TOK_INT_LITERAL: name = "int literal"; break;
-    case TOK_FLOAT_LITERAL: name = "float literal"; break;
-    case TOK_IDENTIFIER: name = "identifier"; break;
+  case TOK_STRING: name = "string"; break;
+  case TOK_RAW_STRING: name = "raw string"; break;
+  case TOK_INT_LITERAL: name = "int literal"; break;
+  case TOK_FLOAT_LITERAL: name = "float literal"; break;
+  case TOK_IDENTIFIER: name = "identifier"; break;
 
-    case TOK_OP_PLUS: name = "+"; break;
-    case TOK_OP_MINUS: name = "-"; break;
-    case TOK_OP_MUL: name = "*"; break;
-    case TOK_OP_DIV: name = "/"; break;
-    case TOK_OP_MODULO: name = "%"; break;
-    case TOK_OP_GT: name = ">"; break;
-    case TOK_OP_LT: name = "<"; break;
-    case TOK_OP_EQ: name = "="; break;
+  case TOK_OP_PLUS: name = "+"; break;
+  case TOK_OP_MINUS: name = "-"; break;
+  case TOK_OP_MUL: name = "*"; break;
+  case TOK_OP_DIV: name = "/"; break;
+  case TOK_OP_MODULO: name = "%"; break;
+  case TOK_OP_GT: name = ">"; break;
+  case TOK_OP_LT: name = "<"; break;
+  case TOK_OP_EQ: name = "="; break;
 
-    case TOK_COMMA: name = ","; break;
-    case TOK_EQUAL: name = "="; break;
-    case TOK_SEMICOLON: name = ";"; break;
-    case TOK_COLON: name = ":"; break;
-    case TOK_DOT: name = "."; break;
-    case TOK_PAREN_LEFT: name = "("; break;
-    case TOK_PAREN_RIGHT: name = ")"; break;
-    case TOK_BRACKET_LEFT: name = "["; break;
-    case TOK_BRACKET_RIGHT: name = "]"; break;
-    case TOK_BRACE_LEFT: name = "{"; break;
-    case TOK_BRACE_RIGHT: name = "}"; break;
+  case TOK_COMMA: name = ","; break;
+  case TOK_EQUAL: name = "="; break;
+  case TOK_SEMICOLON: name = ";"; break;
+  case TOK_COLON: name = ":"; break;
+  case TOK_DOT: name = "."; break;
+  case TOK_PAREN_LEFT: name = "("; break;
+  case TOK_PAREN_RIGHT: name = ")"; break;
+  case TOK_BRACKET_LEFT: name = "["; break;
+  case TOK_BRACKET_RIGHT: name = "]"; break;
+  case TOK_BRACE_LEFT: name = "{"; break;
+  case TOK_BRACE_RIGHT: name = "}"; break;
 
-    default:
-        break;
-    }
-    return name;
+  default: break;
+  }
+  return name;
 }
 
 Lexer::Lexer(const std::string &file) :
@@ -234,7 +234,8 @@ bool Lexer::HandleInt(Token &tok) {
     mFileStream.seekg(file_pos_start);
     return false;
   } else if (c == '0') {
-    tok = MakeToken(mLine, mLine, pos_start, pos_start, TOK_INT_LITERAL, TokenValue(0));
+    tok = MakeToken(
+      mLine, mLine, pos_start, pos_start, TOK_INT_LITERAL, TokenValue(0));
     mPos++;
     return true;
   }

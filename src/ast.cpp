@@ -19,8 +19,7 @@ void AstDisplayVisitor::Visit(Module &mod) {
       fdef->Accept(*this);
       break;
     }
-    default:
-      break;
+    default: break;
     };
   }
 }
@@ -50,8 +49,7 @@ void AstDisplayVisitor::Visit(Block &block) {
       return_stmt->Accept(*this);
       break;
     }
-    default:
-      break;
+    default: break;
     };
   }
   mIndent -= kDefaultIndentSpaces;
@@ -88,8 +86,7 @@ void AstDisplayVisitor::Visit(ReturnStatement &retstmt) {
     strlit->Accept(*this);
     break;
   }
-  default:
-    break;
+  default: break;
   };
   mDisplay << ";\n";
 }
@@ -105,8 +102,7 @@ void CodegenVisitor::Visit(Module &mod) {
       fdef->Accept(*this);
       break;
     }
-    default:
-      break;
+    default: break;
     };
   }
   mLLVMModule->print(llvm::errs(), nullptr);
@@ -169,8 +165,7 @@ void CodegenVisitor::Visit(Block &block) {
       return_stmt->Accept(*this);
       break;
     }
-    default:
-      break;
+    default: break;
     };
   }
 }
@@ -244,8 +239,7 @@ void CodegenVisitor::Visit(ReturnStatement &retstmt) {
     strlit->Accept(*this);
     break;
   }
-  default:
-    break;
+  default: break;
   };
 }
 

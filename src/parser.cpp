@@ -225,8 +225,7 @@ std::unique_ptr<Statement> Parser::ParseBasicStatement() {
     return std::move(return_stmt);
   }
 
-  default:
-    return nullptr;
+  default: return nullptr;
   }
 }
 
