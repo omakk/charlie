@@ -66,6 +66,10 @@ void AstDisplayVisitor::Visit(FloatLiteral &floatlit) {
   mDisplay << floatlit.mFloat;
 }
 
+void AstDisplayVisitor::Visit(StringLiteral &strlit) {
+  mDisplay << '"' << strlit.mString << '"';
+}
+
 void AstDisplayVisitor::Visit(ReturnStatement &retstmt) {
   mDisplay << std::string(mIndent, ' ') << "return ";
   switch (retstmt.mReturnExpr->mExprKind) {
@@ -77,6 +81,11 @@ void AstDisplayVisitor::Visit(ReturnStatement &retstmt) {
   case Expression::FLOAT_LITERAL: {
     auto floatlit = static_cast<FloatLiteral *>(retstmt.mReturnExpr.get());
     floatlit->Accept(*this);
+    break;
+  }
+  case Expression::STRING_LITERAL: {
+    auto strlit = static_cast<StringLiteral *>(retstmt.mReturnExpr.get());
+    strlit->Accept(*this);
     break;
   }
   default:
@@ -168,12 +177,54 @@ void CodegenVisitor::Visit(Block &block) {
 
 void CodegenVisitor::Visit(IntegerLiteral &intlit) {
   mLLVMValue = llvm::ConstantInt::get(
-    mLLVMContext, llvm::APInt(32 /*numBits*/, intlit.mInt, true /*isSigned*/));
+    mLLVMContext, llvm::APInt(/*numBits=*/32, intlit.mInt, /*isSigned=*/true));
 }
 
 void CodegenVisitor::Visit(FloatLiteral &floatlit) {
   mLLVMValue =
     llvm::ConstantFP::get(mLLVMContext, llvm::APFloat(floatlit.mFloat));
+}
+
+void CodegenVisitor::Visit(StringLiteral &strlit) {
+  llvm::Type *i8_array_type =
+    llvm::ArrayType::get(llvm::IntegerType::get(mLLVMContext, /*numbits=*/8),
+                         strlit.mString.length());
+  if (!i8_array_type) {
+    mLLVMValue = nullptr;
+    return;
+  }
+
+  llvm::Module *mod = mLLVMModule.get();
+  assert(mod);
+
+  // FIXME: global_str will leak
+  llvm::GlobalVariable *global_str = new llvm::GlobalVariable(
+    /*Module=*/*mod,
+    /*Type=*/i8_array_type,
+    /*isConstant=*/true,
+    /*Linkage=*/llvm::GlobalVariable::PrivateLinkage,
+    /*Initializer=*/nullptr,
+    /*Name=*/".str");
+  if (!global_str) {
+    mLLVMValue = nullptr;
+    return;
+  }
+
+  global_str->setAlignment(1);
+
+  llvm::Constant *const_array = llvm::ConstantDataArray::getString(
+    mLLVMContext, strlit.mString.c_str(), /*AddNull=*/false);
+
+  global_str->setInitializer(const_array);
+
+  llvm::Constant *const_int64_0 = llvm::ConstantInt::get(
+    mLLVMContext, llvm::APInt(/*numbits=*/64, 0, /*issigned=*/true));
+
+  std::vector<llvm::Constant *> const_ptr_indices(2, const_int64_0);
+  llvm::Constant *const_ptr = llvm::ConstantExpr::getGetElementPtr(
+    i8_array_type, global_str, const_ptr_indices, /*inBounds=*/true);
+
+  mLLVMValue = const_ptr;
 }
 
 void CodegenVisitor::Visit(ReturnStatement &retstmt) {
@@ -186,6 +237,11 @@ void CodegenVisitor::Visit(ReturnStatement &retstmt) {
   case Expression::FLOAT_LITERAL: {
     auto floatlit = static_cast<FloatLiteral *>(retstmt.mReturnExpr.get());
     floatlit->Accept(*this);
+    break;
+  }
+  case Expression::STRING_LITERAL: {
+    auto strlit = static_cast<StringLiteral *>(retstmt.mReturnExpr.get());
+    strlit->Accept(*this);
     break;
   }
   default:
@@ -245,6 +301,13 @@ FloatLiteral::FloatLiteral(float value, ExprKind kind) :
     Expression(kind), mFloat(value) {}
 
 void FloatLiteral::Accept(AstVisitor &v) {
+  v.Visit(*this);
+}
+
+StringLiteral::StringLiteral(std::string value, ExprKind kind) :
+    Expression(kind), mString(std::move(value)) {}
+
+void StringLiteral::Accept(AstVisitor &v) {
   v.Visit(*this);
 }
 

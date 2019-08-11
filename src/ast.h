@@ -21,6 +21,7 @@ class FunctionDefinition;
 class Expression;
 class IntegerLiteral;
 class FloatLiteral;
+class StringLiteral;
 class Statement;
 class ReturnStatement;
 
@@ -36,6 +37,7 @@ public:
   virtual void Visit(FunctionDefinition &func_def) = 0;
   virtual void Visit(IntegerLiteral &intlit) = 0;
   virtual void Visit(FloatLiteral &floatlit) = 0;
+  virtual void Visit(StringLiteral &strlit) = 0;
   virtual void Visit(ReturnStatement &retstmt) = 0;
 
   virtual ~AstVisitor() = default;
@@ -55,6 +57,7 @@ public:
   void Visit(FunctionDefinition &func_def) override;
   void Visit(IntegerLiteral &intlit) override;
   void Visit(FloatLiteral &floatlit) override;
+  void Visit(StringLiteral &strlit) override;
   void Visit(ReturnStatement &retstmt) override;
 };
 
@@ -75,6 +78,7 @@ public:
   void Visit(FunctionDefinition &func_def) override;
   void Visit(IntegerLiteral &intlit) override;
   void Visit(FloatLiteral &floatlit) override;
+  void Visit(StringLiteral &StringLiteral) override;
   void Visit(ReturnStatement &retstmt) override;
 };
 
@@ -191,6 +195,7 @@ public:
   enum ExprKind {
     INT_LITERAL,
     FLOAT_LITERAL,
+    STRING_LITERAL,
   } mExprKind;
 
   virtual ~Expression() = default;
@@ -213,6 +218,15 @@ public:
   float mFloat;
 
   FloatLiteral(float value, ExprKind kind = FLOAT_LITERAL);
+
+  virtual void Accept(AstVisitor &v) override;
+};
+
+class StringLiteral : public Expression, public Ast {
+public:
+  std::string mString;
+
+  StringLiteral(std::string value, ExprKind kind = STRING_LITERAL);
 
   virtual void Accept(AstVisitor &v) override;
 };

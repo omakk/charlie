@@ -244,6 +244,7 @@ std::unique_ptr<ReturnStatement> Parser::ParseReturnStatement() {
  * Expression ::=
  *      | IntegerLiteral
  *      | FloatLiteral
+ *      | StringLiteral
  */
 std::unique_ptr<Expression> Parser::ParseExpression() {
   Token tok = mLexer.GetNextToken();
@@ -274,6 +275,18 @@ std::unique_ptr<Expression> Parser::ParseExpression() {
     std::cout << "DEBUG: Lexer consumed float: " << f << '\n';
     print_tok(tok);
     return std::make_unique<FloatLiteral>(f);
+  }
+
+  case TOK_STRING: {
+    auto pvalue = std::get_if<std::string>(&tok.value);
+    if (!pvalue) {
+      std::cout << "DEBUG: Failed to get float variant from Token\n";
+      return nullptr;
+    }
+    std::string s = *pvalue;
+    std::cout << "DEBUG: Lexer consumed string: \"" << s << "\"\n";
+    print_tok(tok);
+    return std::make_unique<StringLiteral>(std::move(s));
   }
 
   default: {

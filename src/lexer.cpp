@@ -109,7 +109,7 @@ void Lexer::GetNextToken(Token &tok) {
   } else if (ispunct(c)) {
     if (c == '"') {
       // consume string
-      // handle_string();
+      success = HandleString(tok);
     } else {
       // consume operator or punctuation
       success = HandlePunctuation(tok);
@@ -299,7 +299,29 @@ bool Lexer::HandleFloat(Token &tok) {
 }
 
 bool Lexer::HandleString(Token &tok) {
-  return false;
+  int file_pos_start = mFileStream.tellg();
+  uint32_t pos_start = mPos + 1;
+
+  TokenValue value;
+  std::string &str = value.emplace<std::string>();
+  mFileStream.ignore();
+  char c;
+  while ((c = mFileStream.get()) && isprint(c) && c != '"') {
+    str += c;
+  }
+
+  if (c != '"') {
+    tok = ErrorToken(mLine, mLine, pos_start, pos_start);
+    mFileStream.seekg(file_pos_start);
+    return false;
+  }
+
+  uint32_t pos_end = pos_start + str.length();
+  mPos += str.length() + 1;
+
+  tok = MakeToken(mLine, mLine, pos_start, pos_end, TOK_STRING, value);
+
+  return true;
 }
 
 bool Lexer::HandleOperator(Token &tok) {

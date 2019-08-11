@@ -54,6 +54,7 @@ public:
   /*
    * Expression ::= IntegerLiteral
    *              | FloatLiteral
+   *              | StringLiteral
    */
   std::unique_ptr<Expression> ParseExpression();
 
