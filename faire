@@ -64,10 +64,6 @@ case $CMD in
     rm -rf ${CHARLIE_BUILDDIR}
     echo "Done"
     ;;
-"format" | "fmt")
-    echo "Formatting src directory..."
-    clang-format -i -style=file src/*
-    ;;
 "help" | "h" )
     usage
     exit 0
