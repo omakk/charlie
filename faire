@@ -1,14 +1,9 @@
 #!/bin/bash
 
-BINDIR=bin
-BINARY=${BINDIR}/charlie
-BUILDDIR=build
-BUILDINFO=.build.info
-
-# Bring variables from previous build into scope
-if [ -f ${BUILDINFO} ]; then
-    . $BUILDINFO
-fi
+CHARLIE_ROOT=$PWD
+CHARLIE_SRC=${CHARLIE_ROOT}     # Must be where meson.build is located
+CHARLIE_BUILDDIR=${CHARLIE_ROOT}/build
+CHARLIE_BIN=${CHARLIE_BUILDDIR}/charlie
 
 function usage() {
     echo "Usage: ./faire <command> <options>"
@@ -17,55 +12,32 @@ function usage() {
     echo
     echo "b, build <build_type>  Build project in <build_type> mode."
     echo
-    echo "                       Mode options are:"
-    echo "                       --debug:         Debug mode (default)"
-    echo "                       --release:       Release mode"
-    echo "                       --reldebinfo:    Release mode with debug info"
-    echo "                       --minsizerel:    Release mode optimized for size"
+    echo "                       Build types are: [debug (default), debugoptimized, release, minsize]"
     echo
-    echo "r, run <build_type>    Run the target binary"
+    echo "r, run                 Run the target binary"
     echo
-    echo "                       Builds if either no binary is found"
-    echo "                       or the build type is different than"
-    echo "                       that of the binary"
-    echo
-    echo "fmt, format            Run clang format on the project"
+    echo "                       Any arguments following the command will be passed to the executable"
     echo
     echo "c, clean               Clean the project tree."
     echo "h, help                Print this info."
 }
 
 function build() {
-    # Get build type
-    if [ "$1" = "--debug" ] ; then
-        BUILDTYPE="Debug"
-    elif [ "$1" = "--release" ] ; then
-        BUILDTYPE="Release"
-    elif [ "$1" = "--reldebinfo" ] ; then
-        BUILDTYPE="RelWithDebInfo"
-    elif [ "$1" = "--minsizerel" ] ; then
-        BUILDTYPE="MinSizeRel"
-    elif [ -n "${INFO_BUILDTYPE}" ] ; then
-        BUILDTYPE=${INFO_BUILDTYPE}
-    else
+    if [ -z "$1" ] ; then
         # Default build type is debug
-        BUILDTYPE="Debug"
+        BUILDTYPE="debug"
+    else
+        BUILDTYPE=$1
+    fi
+
+    if [ ! -d "${CHARLIE_BUILDDIR}" ] ; then
+        meson setup  --buildtype=${BUILDTYPE} ${CHARLIE_BUILDDIR} ${CHARLIE_SRC}
+    else
+        meson configure --buildtype=${BUILDTYPE} ${CHARLIE_BUILDDIR}
     fi
 
     echo -e "\e[1;34mBuilding in ${BUILDTYPE} mode....\e[0m"
-
-    if [ ! -d "${BUILDDIR}" ] ; then
-        cmake -DCMAKE_BUILD_TYPE="${BUILDTYPE}" -H. -B${BUILDDIR}
-    fi
-    cmake --build ${BUILDDIR}
-
-    # Update build info
-    truncate -s 0 $BUILDINFO
-    echo "INFO_BUILDTYPE=${BUILDTYPE}" >> $BUILDINFO
-}
-
-function run() {
-    ./${BINARY} $@
+    ninja -C ${CHARLIE_BUILDDIR}
 }
 
 if [ $# -lt 1 ] ; then
@@ -80,16 +52,17 @@ case $CMD in
     build $1
     ;;
 "run" | "r" )
-    shift
-    if [ ! -d ${BINDIR} ] || [ ! -f ${BINARY} ] ; then
-        echo -e "\e[1;34mDid not find ${BINARY}....\e[0m"
-        build $1
+    if [ ! -d ${CHARLIE_BUILDDIR} ] || [ ! -f ${CHARLIE_BIN} ] ; then
+        echo -e "\e[1;34mNo executable '${CHARLIE_BIN}' found....\e[0m"
+        build
     fi
-    run $@
+    shift
+    ${CHARLIE_BIN} $@
     ;;
 "clean" | "c" )
     echo "Cleaning repository..."
-    rm -rf ${BINDIR} ${BUILDDIR} ${BUILDINFO}
+    rm -rf ${CHARLIE_BUILDDIR}
+    echo "Done"
     ;;
 "format" | "fmt")
     echo "Formatting src directory..."
