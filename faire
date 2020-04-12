@@ -31,9 +31,9 @@ function build() {
     fi
 
     if [ ! -d "${CHARLIE_BUILDDIR}" ] ; then
-        meson setup  --buildtype=${BUILDTYPE} ${CHARLIE_BUILDDIR} ${CHARLIE_SRC}
+        meson setup  --buildtype=${BUILDTYPE} ${CHARLIE_BUILDDIR} ${CHARLIE_SRC} || exit $?
     else
-        meson configure --buildtype=${BUILDTYPE} ${CHARLIE_BUILDDIR}
+        meson configure --buildtype=${BUILDTYPE} ${CHARLIE_BUILDDIR} || exit $?
     fi
 
     echo -e "\e[1;34mBuilding in ${BUILDTYPE} mode....\e[0m"
@@ -69,9 +69,7 @@ case $CMD in
     exit 0
     ;;
 *)
-    echo
-    echo -e "\e[1;91mUnrecognized command: '$CMD'"
-    echo -e "\e[0m"
+    echo -e "\e[1;91mUnrecognized command: '$CMD'\e[0m"
     usage
     exit 1
     ::
