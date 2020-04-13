@@ -20,8 +20,7 @@ public:
   std::unique_ptr<TopLevelDeclaration> ParseTopLevelDeclaration();
 
   /*
-   * ProcedurePrototype ::=
-   *     IDENTIFIER "::" "proc" '(' { ProcdeureParameters } ')' [ "->" IDENTIFIER ]
+   * ProcedurePrototype ::= IDENTIFIER "::" "proc" "(" { ProcdeureParameters } ")" [ "->" IDENTIFIER ]
    */
   std::unique_ptr<ProcedurePrototype> ParseProcedurePrototype(std::string proc_name);
 
@@ -31,23 +30,22 @@ public:
   std::unique_ptr<ProcedureDefinition> ParseProcedureDefintion(std::string proc_name);
 
   /*
-   * StructDefinition ::=
-   *     IDENTIFIER "::" "struct" '{' StructMemberList '}'
+   * StructDefinition ::= IDENTIFIER "::" "struct" "{" StructMemberList "}"
    */
   std::unique_ptr<StructDefinition> ParseStructDefinition(std::string struct_name);
 
   /*
-   * StructMemberList ::= IDENTIFIER IDENTIFIER | { IDENTIFIER IDENFITIER ',' }
+   * StructMemberList ::= IDENTIFIER IDENTIFIER | { IDENTIFIER IDENFITIER "," }
    */
   //std::unique_ptr<StructMemberList> ParseStructMembers();
 
   /*
-   * Block ::= '{' Statement* '}'
+   * Block ::= "{" { Statement } "}"
    */
   std::unique_ptr<Block> ParseBlock();
 
   /*
-   * Statement ::= BasicStatement ';'
+   * Statement ::= BasicStatement ";"
    */
   std::unique_ptr<Statement> ParseStatement();
 
@@ -62,9 +60,7 @@ public:
   std::unique_ptr<ReturnStatement> ParseReturnStatement();
 
   /*
-   * Expression ::= IntegerLiteral
-   *              | FloatLiteral
-   *              | StringLiteral
+   * Expression ::= IntegerLiteral | FloatLiteral | StringLiteral
    */
   std::unique_ptr<Expression> ParseExpression();
 

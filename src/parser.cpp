@@ -89,8 +89,7 @@ std::unique_ptr<TopLevelDeclaration> Parser::ParseTopLevelDeclaration() {
 }
 
 /*
-* ProcedurePrototype ::=
-*      IDENTIFIER "::" "proc" '(' { ProcedureParameters } ')' [ "->" IDENTIFIER ]
+* ProcedurePrototype ::= IDENTIFIER "::" "proc" "(" { ProcdeureParameters } ")" [ "->" IDENTIFIER ]
 */
 std::unique_ptr<ProcedurePrototype> Parser::ParseProcedurePrototype(std::string proc_name) {
   Token tok;
@@ -184,9 +183,8 @@ std::unique_ptr<ProcedureDefinition> Parser::ParseProcedureDefintion(std::string
 }
 
 /*
- * StructDefinition ::=
- *     IDENTIFIER "::" "struct" '{' StructMemberList '}'
- */
+* StructDefinition ::= IDENTIFIER "::" "struct" "{" StructMemberList "}"
+*/
 std::unique_ptr<StructDefinition> Parser::ParseStructDefinition(std::string struct_name) {
   Token tok;
 
@@ -218,8 +216,8 @@ std::unique_ptr<StructDefinition> Parser::ParseStructDefinition(std::string stru
 }
 
 /*
- * Block ::= '{' Statement* '}'
- */
+* Block ::= "{" { Statement } "}"
+*/
 std::unique_ptr<Block> Parser::ParseBlock() {
   // '{'
   Token tok;
@@ -254,7 +252,7 @@ std::unique_ptr<Block> Parser::ParseBlock() {
 }
 
 /*
- * Statement ::= BasicStatement ';'
+ * Statement ::= BasicStatement ";"
  */
 std::unique_ptr<Statement> Parser::ParseStatement() {
   // BasicStatement
@@ -277,8 +275,7 @@ std::unique_ptr<Statement> Parser::ParseStatement() {
 }
 
 /*
- * BasicStatement ::=
- *      ReturnStatement
+ * BasicStatement ::= ReturnStatement
  */
 std::unique_ptr<Statement> Parser::ParseBasicStatement() {
   Token tok = mLexer.GetNextToken();
@@ -310,11 +307,8 @@ std::unique_ptr<ReturnStatement> Parser::ParseReturnStatement() {
 }
 
 /*
- * Expression ::=
- *      | IntegerLiteral
- *      | FloatLiteral
- *      | StringLiteral
- */
+* Expression ::= IntegerLiteral | FloatLiteral | StringLiteral
+*/
 std::unique_ptr<Expression> Parser::ParseExpression() {
   Token tok = mLexer.GetNextToken();
   if (tok.kind == TOK_ERROR) {
