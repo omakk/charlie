@@ -106,7 +106,7 @@ public:
   bool Expect(TokenKind kind, Token &tok);
 
 private:
-  constexpr static size_t kNumKeywords = TOK_KEYWORD_END - TOK_KEYWORD_START;
+  constexpr static int kNumKeywords = TOK_KEYWORD_END - TOK_KEYWORD_START;
   constexpr static struct {
     const char *kw;
     TokenKind tok;
@@ -123,7 +123,7 @@ private:
     {"return", TOK_KEYWORD_RETURN},
   };
 
-  constexpr static size_t kNumPunc = TOK_PUNC_END - TOK_PUNC_START;
+  constexpr static int kNumPunc = TOK_PUNC_END - TOK_PUNC_START;
   constexpr static struct {
     const char punc;
     TokenKind tok;
@@ -141,7 +141,7 @@ private:
     {'}', TOK_BRACE_RIGHT},
   };
 
-  constexpr static size_t kNumOps = TOK_OP_END - TOK_OP_START;
+  constexpr static int kNumOps = TOK_OP_END - TOK_OP_START;
   constexpr static struct {
     const char op;
     TokenKind tok;

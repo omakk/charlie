@@ -203,7 +203,7 @@ std::unique_ptr<Statement> Parser::ParseStatement() {
     return nullptr;
   }
   print_tok(tok);
-  return std::move(stmt);
+  return stmt;
 }
 
 /*
@@ -222,7 +222,7 @@ std::unique_ptr<Statement> Parser::ParseBasicStatement() {
     auto return_stmt = ParseReturnStatement();
     if (!return_stmt)
       return nullptr;
-    return std::move(return_stmt);
+    return return_stmt;
   }
 
   default: return nullptr;
