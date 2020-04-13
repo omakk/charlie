@@ -35,35 +35,9 @@ std::unique_ptr<Module> Parser::Parse() {
 }
 
 /*
- * TopLevelDeclaration ::= FunctionDefinition
+ * TopLevelDeclaration ::= ProcedureDefinition
  */
 std::unique_ptr<TopLevelDeclaration> Parser::ParseTopLevelDeclaration() {
-  // TODO(oakkila): Only dealing with FunctionDefinition here
-  Token tok = mLexer.GetNextToken();
-  if (tok.kind == TOK_ERROR) {
-    return nullptr;
-  }
-
-  switch (tok.kind) {
-  case TOK_KEYWORD_FUN: {
-    print_tok(tok);
-    auto func_def = ParseFunctionDefintion();
-    if (!func_def)
-      return nullptr;
-    return func_def;
-  }
-  default:
-    // TODO: report some approriate warning/error
-    return nullptr;
-  }
-}
-
-/*
- * FunctionPrototype ::=
- *      "fn" IDENTIFIER '(' FunctionParameters* ')' IDENTIFIER
- */
-std::unique_ptr<FunctionPrototype> Parser::ParseFunctionPrototype() {
-  // IDENTIFIER (function name)
   Token tok;
   bool res = mLexer.Expect(TOK_IDENTIFIER, tok);
   if (!res) {
@@ -73,15 +47,53 @@ std::unique_ptr<FunctionPrototype> Parser::ParseFunctionPrototype() {
          tok.span.pos_start);
     return nullptr;
   }
-  std::string fn_name;
-  auto pvalue = std::get_if<std::string>(&tok.value);
-  if (pvalue)
-    fn_name = *pvalue;
-  std::cout << "DEBUG: Lexer consumed identifier: " << fn_name << '\n';
+
+  std::string ident = std::get<std::string>(tok.value);
+  std::cout << "DEBUG: Lexer consumed identifier: " << ident << '\n';
   print_tok(tok);
 
+  res = mLexer.Expect(TOK_COLON, tok);
+  if (!res) {
+    warn("[Parse Error] %s:<%d:%d>: Expected ':'\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
+    return nullptr;
+  }
+
+  res = mLexer.Expect(TOK_COLON, tok);
+  if (!res) {
+    warn("[Parse Error] %s:<%d:%d>: Expected ':'\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
+    return nullptr;
+  }
+
+  mLexer.GetNextToken(tok);
+  if (tok.kind == TOK_ERROR) {
+    return nullptr;
+  }
+
+  switch (tok.kind) {
+  case TOK_KEYWORD_PROC:
+    print_tok(tok);
+    return ParseProcedureDefintion(std::move(ident));
+  default:
+    // TODO: report some approriate warning/error
+    return nullptr;
+  }
+}
+
+/*
+* ProcedurePrototype ::=
+*      IDENTIFIER "::" "proc" '(' { ProcedureParameters } ')' [ "->" IDENTIFIER ]
+*/
+std::unique_ptr<ProcedurePrototype> Parser::ParseProcedurePrototype(std::string proc_name) {
+  Token tok;
+
   // '('
-  res = mLexer.Expect(TOK_PAREN_LEFT, tok);
+  bool res = mLexer.Expect(TOK_PAREN_LEFT, tok);
   if (!res) {
     warn("[Parse Error] %s:<%d:%d>: Expected '('\n",
          mFileName.c_str(),
@@ -92,7 +104,7 @@ std::unique_ptr<FunctionPrototype> Parser::ParseFunctionPrototype() {
   print_tok(tok);
 
   std::vector<std::string> args;
-  // ParseFunctionParameters();
+  // ParseProcedureParameters();
 
   // ')'
   res = mLexer.Expect(TOK_PAREN_RIGHT, tok);
@@ -105,6 +117,30 @@ std::unique_ptr<FunctionPrototype> Parser::ParseFunctionPrototype() {
   }
   print_tok(tok);
 
+  // "->"
+  // TODO: We should really peek here instead of expecting since ParseBlock will be expecting an
+  // open left brace
+  res = mLexer.Expect(TOK_DASH, tok);
+  if (!res && tok.kind == TOK_BRACE_LEFT) {
+    // We dont have a return type so we're done
+    return std::make_unique<ProcedurePrototype>(
+      std::move(proc_name), "", std::move(args));
+  } else if (!res) {
+    warn("[Parse Error] %s:<%d:%d>: Expected \"->\"\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
+    return nullptr;
+  }
+  res = mLexer.Expect(TOK_OP_GT, tok);
+  if (!res) {
+    warn("[Parse Error] %s:<%d:%d>: Expected \"->\"\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
+    return nullptr;
+  }
+
   // IDENTIFIER (return type)
   res = mLexer.Expect(TOK_IDENTIFIER, tok);
   if (!res) {
@@ -115,26 +151,23 @@ std::unique_ptr<FunctionPrototype> Parser::ParseFunctionPrototype() {
     return nullptr;
   }
 
-  std::string return_type;
-  pvalue = std::get_if<std::string>(&tok.value);
-  if (pvalue)
-    return_type = *pvalue;
+  std::string return_type = std::get<std::string>(tok.value);
   std::cout << "DEBUG: Lexer consumed identifier: " << return_type << '\n';
   print_tok(tok);
 
-  if (fn_name.empty() || return_type.empty()) {
+  if (proc_name.empty() || return_type.empty()) {
     return nullptr;
   }
 
-  return std::make_unique<FunctionPrototype>(
-    std::move(fn_name), std::move(return_type), std::move(args));
+  return std::make_unique<ProcedurePrototype>(
+    std::move(proc_name), std::move(return_type), std::move(args));
 }
 
 /*
- * FunctionDeclaration ::= FunctionPrototype Block
+ * ProcedureDeclaration ::= ProcedurePrototype Block
  */
-std::unique_ptr<FunctionDefinition> Parser::ParseFunctionDefintion() {
-  auto proto = ParseFunctionPrototype();
+std::unique_ptr<ProcedureDefinition> Parser::ParseProcedureDefintion(std::string proc_name) {
+  auto proto = ParseProcedurePrototype(std::move(proc_name));
   if (!proto)
     return nullptr;
 
@@ -143,8 +176,8 @@ std::unique_ptr<FunctionDefinition> Parser::ParseFunctionDefintion() {
   if (!block)
     return nullptr;
 
-  return std::make_unique<FunctionDefinition>(std::move(proto),
-                                              std::move(block));
+  return std::make_unique<ProcedureDefinition>(std::move(proto),
+                                               std::move(block));
 }
 
 /*

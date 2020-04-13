@@ -15,21 +15,20 @@ public:
   std::unique_ptr<Module> Parse();
 
   /*
-   * TopLevelDeclaration ::= FunctionDefinition
-   *
+   * TopLevelDeclaration ::= ProcedureDefinition
    */
   std::unique_ptr<TopLevelDeclaration> ParseTopLevelDeclaration();
 
   /*
-   * FunctionPrototype ::=
-   *      "fn" IDENTIFIER '(' FunctionParameters* ')' IDENTIFIER
+   * ProcedurePrototype ::=
+   *     IDENTIFIER "::" "proc" '(' { ProcdeureParameters } ')' [ "->" IDENTIFIER ]
    */
-  std::unique_ptr<FunctionPrototype> ParseFunctionPrototype();
+  std::unique_ptr<ProcedurePrototype> ParseProcedurePrototype(std::string proc_name);
 
   /*
-   * FunctionDefinition ::= FunctionPrototype Block
+   * ProcedureDefinition ::= ProcedurePrototype Block
    */
-  std::unique_ptr<FunctionDefinition> ParseFunctionDefintion();
+  std::unique_ptr<ProcedureDefinition> ParseProcedureDefintion(std::string proc_name);
 
   /*
    * Block ::= '{' Statement* '}'

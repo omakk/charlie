@@ -12,7 +12,7 @@ enum TokenKind : uint32_t {
   // KEYWORDS
   TOK_KEYWORD_START = 100,
   TOK_KEYWORD_USE = TOK_KEYWORD_START,
-  TOK_KEYWORD_FUN = 101,
+  TOK_KEYWORD_PROC = 101,
   TOK_KEYWORD_LET = 102,
   TOK_KEYWORD_FOR = 103,
   TOK_KEYWORD_WHILE = 104,
@@ -56,8 +56,9 @@ enum TokenKind : uint32_t {
   TOK_BRACKET_RIGHT = 808,
   TOK_BRACE_LEFT = 809,
   TOK_BRACE_RIGHT = 810,
+  TOK_DASH = 811,
   // Add punctuation as they come and update TOK_PUNC_END
-  TOK_PUNC_END = 811,
+  TOK_PUNC_END = 812,
 
   TOK_EOF = (0x0E0F'E0F0),
 
@@ -113,9 +114,9 @@ private:
   } mKeywordMap[kNumKeywords] = {
     {"if", TOK_KEYWORD_IF},
     {"use", TOK_KEYWORD_USE},
-    {"fun", TOK_KEYWORD_FUN},
     {"let", TOK_KEYWORD_LET},
     {"for", TOK_KEYWORD_FOR},
+    {"proc", TOK_KEYWORD_PROC},
     {"else", TOK_KEYWORD_ELSE},
     {"enum", TOK_KEYWORD_ENUM},
     {"while", TOK_KEYWORD_WHILE},
@@ -139,6 +140,7 @@ private:
     {']', TOK_BRACKET_RIGHT},
     {'{', TOK_BRACE_LEFT},
     {'}', TOK_BRACE_RIGHT},
+    {'-', TOK_DASH},
   };
 
   constexpr static int kNumOps = TOK_OP_END - TOK_OP_START;

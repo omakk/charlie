@@ -14,9 +14,9 @@ AstDisplayVisitor::AstDisplayVisitor(std::ostream &display, uint16_t indent) :
 void AstDisplayVisitor::Visit(Module &mod) {
   for (const auto &decl : mod.TopLevelDecls()) {
     switch (decl->mDeclKind) {
-    case TopLevelDeclaration::FUNCTION_DEF: {
-      auto fdef = static_cast<FunctionDefinition *>(decl.get());
-      fdef->Accept(*this);
+    case TopLevelDeclaration::PROC_DEF: {
+      auto pdef = static_cast<ProcedureDefinition *>(decl.get());
+      pdef->Accept(*this);
       break;
     }
     default: break;
@@ -24,18 +24,22 @@ void AstDisplayVisitor::Visit(Module &mod) {
   }
 }
 
-void AstDisplayVisitor::Visit(FunctionPrototype &proto) {
+void AstDisplayVisitor::Visit(ProcedurePrototype &proto) {
   std::stringstream s;
-  s << std::string(mIndent, ' ') << "fun " << proto.Name() << "(";
+  s << std::string(mIndent, ' ') <<  proto.Name() << " :: proc(";
   // TODO: Handle function arguments
-  // if (!func_def.mArguments.empty()) {}
-  s << ") " << proto.ReturnType() << '\n';
+  // if (!proc_def.mArguments.empty()) {}
+  if (proto.ReturnType().empty()) {
+    s << ") \n";
+  } else {
+    s << ") -> " << proto.ReturnType() << '\n';
+  }
   mDisplay << s.str();
 }
 
-void AstDisplayVisitor::Visit(FunctionDefinition &func_def) {
-  func_def.Prototype()->Accept(*this);
-  func_def.BodyBlock()->Accept(*this);
+void AstDisplayVisitor::Visit(ProcedureDefinition &proc_def) {
+  proc_def.Prototype()->Accept(*this);
+  proc_def.BodyBlock()->Accept(*this);
 }
 
 void AstDisplayVisitor::Visit(Block &block) {
@@ -97,9 +101,9 @@ void CodegenVisitor::Visit(Module &mod) {
   mLLVMModule = std::make_unique<llvm::Module>(mod.Name(), mLLVMContext);
   for (const auto &decl : mod.TopLevelDecls()) {
     switch (decl->mDeclKind) {
-    case TopLevelDeclaration::FUNCTION_DEF: {
-      auto fdef = static_cast<FunctionDefinition *>(decl.get());
-      fdef->Accept(*this);
+    case TopLevelDeclaration::PROC_DEF: {
+      auto pdef = static_cast<ProcedureDefinition *>(decl.get());
+      pdef->Accept(*this);
       break;
     }
     default: break;
@@ -108,7 +112,7 @@ void CodegenVisitor::Visit(Module &mod) {
   mLLVMModule->print(llvm::errs(), nullptr);
 }
 
-void CodegenVisitor::Visit(FunctionPrototype &proto) {
+void CodegenVisitor::Visit(ProcedurePrototype &proto) {
   llvm::Function *f = mLLVMModule->getFunction(proto.Name());
   if (!f) {
     // TODO(oakkila): Assuming all return types are int32
@@ -128,8 +132,8 @@ void CodegenVisitor::Visit(FunctionPrototype &proto) {
   mLLVMFunction = f;
 }
 
-void CodegenVisitor::Visit(FunctionDefinition &func_def) {
-  func_def.Prototype()->Accept(*this);
+void CodegenVisitor::Visit(ProcedureDefinition &proc_def) {
+  proc_def.Prototype()->Accept(*this);
 
   llvm::Function *f = mLLVMFunction;
   if (!f) {
@@ -140,7 +144,7 @@ void CodegenVisitor::Visit(FunctionDefinition &func_def) {
   llvm::BasicBlock *bb = llvm::BasicBlock::Create(mLLVMContext, "entry", f);
   mLLVMIrBuilder.SetInsertPoint(bb);
 
-  Block *body = func_def.BodyBlock().get();
+  Block *body = proc_def.BodyBlock().get();
   if (body) {
     body->Accept(*this);
 
@@ -253,25 +257,25 @@ void Module::Accept(AstVisitor &v) {
   v.Visit(*this);
 }
 
-FunctionPrototype::FunctionPrototype(std::string name,
-                                     std::string return_type,
-                                     std::vector<std::string> args) :
+ProcedurePrototype::ProcedurePrototype(std::string name,
+                                       std::string return_type,
+                                       std::vector<std::string> args) :
     mName(std::move(name)),
     mReturnType(std::move(return_type)), mArguments(std::move(args)) {}
 
-void FunctionPrototype::Accept(AstVisitor &v) {
+void ProcedurePrototype::Accept(AstVisitor &v) {
   v.Visit(*this);
 }
 
 TopLevelDeclaration::TopLevelDeclaration(DeclKind kind) : mDeclKind(kind) {}
 
-FunctionDefinition::FunctionDefinition(std::unique_ptr<FunctionPrototype> proto,
+ProcedureDefinition::ProcedureDefinition(std::unique_ptr<ProcedurePrototype> proto,
                                        std::unique_ptr<Block> block,
                                        DeclKind kind) :
     TopLevelDeclaration(kind),
     mProto(std::move(proto)), mBlock(std::move(block)) {}
 
-void FunctionDefinition::Accept(AstVisitor &v) {
+void ProcedureDefinition::Accept(AstVisitor &v) {
   v.Visit(*this);
 }
 

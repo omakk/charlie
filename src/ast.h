@@ -16,8 +16,8 @@ class Ast;
 class Module;
 class TopLevelDeclaration;
 class Block;
-class FunctionPrototype;
-class FunctionDefinition;
+class ProcedurePrototype;
+class ProcedureDefinition;
 class Expression;
 class IntegerLiteral;
 class FloatLiteral;
@@ -33,8 +33,8 @@ class AstVisitor {
 public:
   virtual void Visit(Module &ast) = 0;
   virtual void Visit(Block &block) = 0;
-  virtual void Visit(FunctionPrototype &proto) = 0;
-  virtual void Visit(FunctionDefinition &func_def) = 0;
+  virtual void Visit(ProcedurePrototype &proto) = 0;
+  virtual void Visit(ProcedureDefinition &proc_def) = 0;
   virtual void Visit(IntegerLiteral &intlit) = 0;
   virtual void Visit(FloatLiteral &floatlit) = 0;
   virtual void Visit(StringLiteral &strlit) = 0;
@@ -53,8 +53,8 @@ public:
 
   void Visit(Module &mod) override;
   void Visit(Block &block) override;
-  void Visit(FunctionPrototype &proto) override;
-  void Visit(FunctionDefinition &func_def) override;
+  void Visit(ProcedurePrototype &proto) override;
+  void Visit(ProcedureDefinition &func_def) override;
   void Visit(IntegerLiteral &intlit) override;
   void Visit(FloatLiteral &floatlit) override;
   void Visit(StringLiteral &strlit) override;
@@ -67,15 +67,15 @@ class CodegenVisitor : public AstVisitor {
   llvm::IRBuilder<> mLLVMIrBuilder;
   std::unique_ptr<llvm::Module> mLLVMModule;
   llvm::Value *mLLVMValue;        // Set after any AST node codegen
-  llvm::Function *mLLVMFunction;  // Set after FunctionDefinition codegen
+  llvm::Function *mLLVMFunction;  // Set after ProcedureDefinition codegen
 
 public:
   CodegenVisitor();
 
   void Visit(Module &mod) override;
   void Visit(Block &block) override;
-  void Visit(FunctionPrototype &proto) override;
-  void Visit(FunctionDefinition &func_def) override;
+  void Visit(ProcedurePrototype &proto) override;
+  void Visit(ProcedureDefinition &func_def) override;
   void Visit(IntegerLiteral &intlit) override;
   void Visit(FloatLiteral &floatlit) override;
   void Visit(StringLiteral &StringLiteral) override;
@@ -112,9 +112,9 @@ private:
   const std::vector<std::unique_ptr<TopLevelDeclaration>> mTopLevelDecls;
 };
 
-class FunctionPrototype : public Ast {
+class ProcedurePrototype : public Ast {
 public:
-  FunctionPrototype(std::string name,
+  ProcedurePrototype(std::string name,
                     std::string return_type,
                     std::vector<std::string> args);
 
@@ -143,7 +143,7 @@ private:
 class TopLevelDeclaration {
 public:
   enum DeclKind {
-    FUNCTION_DEF,
+    PROC_DEF,
   } mDeclKind;
 
   virtual ~TopLevelDeclaration() = default;
@@ -152,13 +152,13 @@ protected:
   TopLevelDeclaration(DeclKind kind);
 };
 
-class FunctionDefinition : public TopLevelDeclaration, public Ast {
+class ProcedureDefinition : public TopLevelDeclaration, public Ast {
 public:
-  FunctionDefinition(std::unique_ptr<FunctionPrototype> proto,
+  ProcedureDefinition(std::unique_ptr<ProcedurePrototype> proto,
                      std::unique_ptr<Block> block,
-                     DeclKind kind = FUNCTION_DEF);
+                     DeclKind kind = PROC_DEF);
 
-  std::unique_ptr<FunctionPrototype> &Prototype() {
+  std::unique_ptr<ProcedurePrototype> &Prototype() {
     return mProto;
   }
   std::unique_ptr<Block> &BodyBlock() {
@@ -168,7 +168,7 @@ public:
   virtual void Accept(AstVisitor &v) override;
 
 private:
-  std::unique_ptr<FunctionPrototype> mProto;
+  std::unique_ptr<ProcedurePrototype> mProto;
   std::unique_ptr<Block> mBlock;
 };
 

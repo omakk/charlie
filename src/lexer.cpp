@@ -33,7 +33,7 @@ const char *GetTokenName(TokenKind kind) {
   const char *name = "";
   switch (kind) {
   case TOK_KEYWORD_USE: name = "use"; break;
-  case TOK_KEYWORD_FUN: name = "fun"; break;
+  case TOK_KEYWORD_PROC: name = "proc"; break;
   case TOK_KEYWORD_LET: name = "let"; break;
   case TOK_KEYWORD_FOR: name = "for"; break;
   case TOK_KEYWORD_WHILE: name = "while"; break;
@@ -69,6 +69,7 @@ const char *GetTokenName(TokenKind kind) {
   case TOK_BRACKET_RIGHT: name = "]"; break;
   case TOK_BRACE_LEFT: name = "{"; break;
   case TOK_BRACE_RIGHT: name = "}"; break;
+  case TOK_DASH: name = "-"; break;
 
   default: break;
   }
