@@ -323,36 +323,21 @@ std::unique_ptr<Expression> Parser::ParseExpression() {
 
   switch (tok.kind) {
   case TOK_INT_LITERAL: {
-    auto pvalue = std::get_if<int>(&tok.value);
-    if (!pvalue) {
-      std::cout << "DEBUG: Failed to get int variant from Token\n";
-      return nullptr;
-    }
-    int i = *pvalue;
+    auto i = std::get<int>(tok.value);
     std::cout << "DEBUG: Lexer consumed int: " << i << '\n';
     print_tok(tok);
     return std::make_unique<IntegerLiteral>(i);
   }
 
   case TOK_FLOAT_LITERAL: {
-    auto pvalue = std::get_if<float>(&tok.value);
-    if (!pvalue) {
-      std::cout << "DEBUG: Failed to get float variant from Token\n";
-      return nullptr;
-    }
-    float f = *pvalue;
+    auto f = std::get<float>(tok.value);
     std::cout << "DEBUG: Lexer consumed float: " << f << '\n';
     print_tok(tok);
     return std::make_unique<FloatLiteral>(f);
   }
 
   case TOK_STRING: {
-    auto pvalue = std::get_if<std::string>(&tok.value);
-    if (!pvalue) {
-      std::cout << "DEBUG: Failed to get float variant from Token\n";
-      return nullptr;
-    }
-    std::string s = *pvalue;
+    auto s = std::get<std::string>(tok.value);
     std::cout << "DEBUG: Lexer consumed string: \"" << s << "\"\n";
     print_tok(tok);
     return std::make_unique<StringLiteral>(std::move(s));
