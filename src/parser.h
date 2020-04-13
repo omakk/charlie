@@ -15,7 +15,7 @@ public:
   std::unique_ptr<Module> Parse();
 
   /*
-   * TopLevelDeclaration ::= ProcedureDefinition
+   * TopLevelDeclaration ::= ProcedureDefinition | StructDefinition
    */
   std::unique_ptr<TopLevelDeclaration> ParseTopLevelDeclaration();
 
@@ -29,6 +29,17 @@ public:
    * ProcedureDefinition ::= ProcedurePrototype Block
    */
   std::unique_ptr<ProcedureDefinition> ParseProcedureDefintion(std::string proc_name);
+
+  /*
+   * StructDefinition ::=
+   *     IDENTIFIER "::" "struct" '{' StructMemberList '}'
+   */
+  std::unique_ptr<StructDefinition> ParseStructDefinition(std::string struct_name);
+
+  /*
+   * StructMemberList ::= IDENTIFIER IDENTIFIER | { IDENTIFIER IDENFITIER ',' }
+   */
+  //std::unique_ptr<StructMemberList> ParseStructMembers();
 
   /*
    * Block ::= '{' Statement* '}'

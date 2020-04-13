@@ -18,6 +18,7 @@ class TopLevelDeclaration;
 class Block;
 class ProcedurePrototype;
 class ProcedureDefinition;
+class StructDefinition;
 class Expression;
 class IntegerLiteral;
 class FloatLiteral;
@@ -35,6 +36,7 @@ public:
   virtual void Visit(Block &block) = 0;
   virtual void Visit(ProcedurePrototype &proto) = 0;
   virtual void Visit(ProcedureDefinition &proc_def) = 0;
+  virtual void Visit(StructDefinition &struct_def) = 0;
   virtual void Visit(IntegerLiteral &intlit) = 0;
   virtual void Visit(FloatLiteral &floatlit) = 0;
   virtual void Visit(StringLiteral &strlit) = 0;
@@ -55,6 +57,7 @@ public:
   void Visit(Block &block) override;
   void Visit(ProcedurePrototype &proto) override;
   void Visit(ProcedureDefinition &func_def) override;
+  void Visit(StructDefinition &struct_def) override;
   void Visit(IntegerLiteral &intlit) override;
   void Visit(FloatLiteral &floatlit) override;
   void Visit(StringLiteral &strlit) override;
@@ -76,6 +79,7 @@ public:
   void Visit(Block &block) override;
   void Visit(ProcedurePrototype &proto) override;
   void Visit(ProcedureDefinition &func_def) override;
+  void Visit(StructDefinition &struct_def) override;
   void Visit(IntegerLiteral &intlit) override;
   void Visit(FloatLiteral &floatlit) override;
   void Visit(StringLiteral &StringLiteral) override;
@@ -144,6 +148,7 @@ class TopLevelDeclaration {
 public:
   enum DeclKind {
     PROC_DEF,
+    STRUCT_DEF,
   } mDeclKind;
 
   virtual ~TopLevelDeclaration() = default;
@@ -170,6 +175,26 @@ public:
 private:
   std::unique_ptr<ProcedurePrototype> mProto;
   std::unique_ptr<Block> mBlock;
+};
+
+class StructDefinition : public TopLevelDeclaration, public Ast {
+public:
+  StructDefinition(std::string struct_name,
+                   std::vector<std::string> members,
+                   DeclKind kind = STRUCT_DEF);
+
+  const std::string &Name() const {
+      return mStructName;
+  }
+  const std::vector<std::string> &Members() const {
+      return mMembers;
+  }
+
+  virtual void Accept(AstVisitor &v) override;
+
+private:
+  std::string mStructName;
+  std::vector<std::string> mMembers;
 };
 
 class Block : public Ast {

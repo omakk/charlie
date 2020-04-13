@@ -35,7 +35,7 @@ std::unique_ptr<Module> Parser::Parse() {
 }
 
 /*
- * TopLevelDeclaration ::= ProcedureDefinition
+ * TopLevelDeclaration ::= ProcedureDefinition | StructDefinition
  */
 std::unique_ptr<TopLevelDeclaration> Parser::ParseTopLevelDeclaration() {
   Token tok;
@@ -79,6 +79,9 @@ std::unique_ptr<TopLevelDeclaration> Parser::ParseTopLevelDeclaration() {
   case TOK_KEYWORD_PROC:
     print_tok(tok);
     return ParseProcedureDefintion(std::move(ident));
+  case TOK_KEYWORD_STRUCT:
+    print_tok(tok);
+    return ParseStructDefinition(std::move(ident));
   default:
     // TODO: report some approriate warning/error
     return nullptr;
@@ -178,6 +181,40 @@ std::unique_ptr<ProcedureDefinition> Parser::ParseProcedureDefintion(std::string
 
   return std::make_unique<ProcedureDefinition>(std::move(proto),
                                                std::move(block));
+}
+
+/*
+ * StructDefinition ::=
+ *     IDENTIFIER "::" "struct" '{' StructMemberList '}'
+ */
+std::unique_ptr<StructDefinition> Parser::ParseStructDefinition(std::string struct_name) {
+  Token tok;
+
+  // '{'
+  bool res = mLexer.Expect(TOK_BRACE_LEFT, tok);
+  if (!res) {
+    warn("[Parse Error] %s:<%d:%d>: Expected '{'\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
+    return nullptr;
+  }
+  print_tok(tok);
+
+  std::vector<std::string> members;
+  // ParseStructMembers();
+
+  tok = mLexer.GetNextToken();
+  if (tok.kind != TOK_BRACE_RIGHT) {
+    warn("[Parse Error] %s:<%d:%d>: Expected '}'\n",
+         mFileName.c_str(),
+         tok.span.line_start,
+         tok.span.pos_start);
+    return nullptr;
+  }
+  print_tok(tok);
+
+  return std::make_unique<StructDefinition>(std::move(struct_name), std::move(members));
 }
 
 /*

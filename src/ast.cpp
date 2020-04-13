@@ -19,6 +19,11 @@ void AstDisplayVisitor::Visit(Module &mod) {
       pdef->Accept(*this);
       break;
     }
+    case TopLevelDeclaration::STRUCT_DEF: {
+      auto sdef = static_cast<StructDefinition *>(decl.get());
+      sdef->Accept(*this);
+      break;
+    }
     default: break;
     };
   }
@@ -40,6 +45,17 @@ void AstDisplayVisitor::Visit(ProcedurePrototype &proto) {
 void AstDisplayVisitor::Visit(ProcedureDefinition &proc_def) {
   proc_def.Prototype()->Accept(*this);
   proc_def.BodyBlock()->Accept(*this);
+}
+
+void AstDisplayVisitor::Visit(StructDefinition &struct_def) {
+  std::stringstream s;
+  s << std::string(mIndent, ' ') <<  struct_def.Name() << ":: struct {";
+  if (struct_def.Members().empty()) {
+    s << "}\n";
+  } else {
+    // TODO: Handle struct members display
+  }
+  mDisplay << s.str();
 }
 
 void AstDisplayVisitor::Visit(Block &block) {
@@ -106,6 +122,11 @@ void CodegenVisitor::Visit(Module &mod) {
       pdef->Accept(*this);
       break;
     }
+    case TopLevelDeclaration::STRUCT_DEF: {
+      auto sdef = static_cast<StructDefinition *>(decl.get());
+      sdef->Accept(*this);
+      break;
+    }
     default: break;
     };
   }
@@ -159,6 +180,11 @@ void CodegenVisitor::Visit(ProcedureDefinition &proc_def) {
 
   f->eraseFromParent();
   mLLVMFunction = nullptr;
+}
+
+void CodegenVisitor::Visit(StructDefinition &struct_def) {
+  // TODO: struct codegen
+  (void) struct_def;
 }
 
 void CodegenVisitor::Visit(Block &block) {
@@ -276,6 +302,16 @@ ProcedureDefinition::ProcedureDefinition(std::unique_ptr<ProcedurePrototype> pro
     mProto(std::move(proto)), mBlock(std::move(block)) {}
 
 void ProcedureDefinition::Accept(AstVisitor &v) {
+  v.Visit(*this);
+}
+
+StructDefinition::StructDefinition(std::string struct_name,
+                                   std::vector<std::string> members,
+                                   DeclKind kind) :
+    TopLevelDeclaration(kind),
+    mStructName(std::move(struct_name)), mMembers(std::move(members)) {}
+
+void StructDefinition::Accept(AstVisitor &v) {
   v.Visit(*this);
 }
 
