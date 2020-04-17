@@ -39,6 +39,11 @@ std::unique_ptr<Module> Parser::Parse() {
  */
 std::unique_ptr<TopLevelDeclaration> Parser::ParseTopLevelDeclaration() {
   Token tok;
+
+  if (mLexer.PeekNextToken(tok); tok.kind == TOK_EOF) {
+    return nullptr;
+  }
+
   bool res = mLexer.Expect(TOK_IDENTIFIER, tok);
   if (!res) {
     warn("[Parse Error] %s:<%d:%d>: Expected identifier\n",
@@ -70,12 +75,7 @@ std::unique_ptr<TopLevelDeclaration> Parser::ParseTopLevelDeclaration() {
     return nullptr;
   }
 
-  mLexer.GetNextToken(tok);
-  if (tok.kind == TOK_ERROR) {
-    return nullptr;
-  }
-
-  switch (tok.kind) {
+  switch (mLexer.GetNextToken(tok); tok.kind) {
   case TOK_KEYWORD_PROC:
     print_tok(tok);
     return ParseProcedureDefintion(std::move(ident));

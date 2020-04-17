@@ -83,75 +83,30 @@ Lexer::Lexer(const std::string &file) :
 Lexer::~Lexer() {}
 
 void Lexer::GetNextToken(Token &tok) {
-  SkipWhitespace();
-
-  if (mFileStream.eof()) {
-    tok = MakeToken(mLine, mLine, mPos, mPos, TOK_EOF, TokenValue());
-    mLastToken = tok;
-    return;
+  if (bool success = Advance(tok, mLine, mPos); !success && tok.kind != TOK_EOF) {
+    fprintf(stderr, "[Lexer Error] <%d,%d>: Failed to lex! \n", tok.span.line_start, tok.span.pos_start);
   }
-
-  bool success = false;
-  char c = mFileStream.peek();
-  if (isalpha(c)) {
-    success = HandleIdentifier(tok);
-  } else if (isdigit(c)) {
-    // Consume float or integer
-
-    // Try float first since a float may contain a valid integer
-    // e.g. 120.02 - '120' is a valid integer
-    success = HandleFloat(tok);
-    if (success) {
-      mLastToken = tok;
-      return;
-    }
-
-    success = HandleInt(tok);
-  } else if (ispunct(c)) {
-    if (c == '"') {
-      // consume string
-      success = HandleString(tok);
-    } else {
-      // consume operator or punctuation
-      success = HandlePunctuation(tok);
-      if (success) {
-        mLastToken = tok;
-        return;
-      }
-
-      success = HandleOperator(tok);
-    }
-  }
-
-  if (!success) {
-    fprintf(stderr, "[Lexer Error] <%d,%d>: Failed to lex! \n", mLine, mPos);
-  }
-
+  mLine = tok.span.line_end;
+  mPos = tok.span.pos_end;
   mLastToken = tok;
 }
 
-Token Lexer::GetNextToken() {
-  Token tok;
-  GetNextToken(tok);
-  return tok;
+void Lexer::PeekNextToken(Token &tok) {
+  int file_pos_start = mFileStream.tellg();
+  if (bool success = Advance(tok, mLine, mPos); !success && tok.kind != TOK_EOF) {
+    fprintf(stderr, "[Lexer Error] <%d,%d>: Failed to lex! \n", tok.span.line_start, tok.span.pos_start);
+  }
+  mFileStream.seekg(file_pos_start);
 }
 
-void Lexer::GetToken(Token &tok) {
-  tok = mLastToken;
-}
-
-Token Lexer::GetToken() {
-  return mLastToken;
-}
-
-void Lexer::SkipWhitespace() {
+void Lexer::SkipWhitespace(uint32_t *line, uint32_t *pos) {
   char c;
   while ((c = mFileStream.get()) && isspace(c)) {
     if (c == '\n') {
-      mLine++;
-      mPos = 0;
+      (*line)++;
+      *pos = 0;
     } else {
-      mPos++;
+      (*pos)++;
     }
   }
 
@@ -164,6 +119,49 @@ void Lexer::SkipWhitespace() {
 bool Lexer::Expect(TokenKind kind, Token &tok) {
   tok = GetNextToken();
   return tok.kind == kind;
+}
+
+bool Lexer::Advance(Token &tok, uint32_t line, uint32_t pos) {
+  SkipWhitespace(&line, &pos);
+
+  bool success = false;
+  char c;
+
+  if (mFileStream.eof()) {
+    tok = MakeToken(line, line, pos, pos, TOK_EOF, TokenValue());
+    success = false;
+    goto done;
+  }
+
+  c = mFileStream.peek();
+  if (isalpha(c)) {
+    success = HandleIdentifier(tok, line, pos);
+  } else if (isdigit(c)) {
+    // Consume float or integer
+
+    // Try float first since a float may contain a valid integer
+    // e.g. 120.02 - '120' is a valid integer
+    if (success = HandleFloat(tok, line, pos); success) {
+      goto done;
+    }
+
+    success = HandleInt(tok, line, pos);
+  } else if (ispunct(c)) {
+    if (c == '"') {
+      // consume string
+      success = HandleString(tok, line, pos);
+    } else {
+      // consume operator or punctuation
+      if (success = HandlePunctuation(tok, line, pos); success) {
+        goto done;
+      }
+
+      success = HandleOperator(tok, line, pos);
+    }
+  }
+
+done:
+  return success;
 }
 
 TokenKind Lexer::IsKeyword(const char *input) const noexcept {
@@ -199,7 +197,7 @@ TokenKind Lexer::IsOperator(const char input) const noexcept {
   return tok;
 }
 
-bool Lexer::HandleIdentifier(Token &tok) {
+bool Lexer::HandleIdentifier(Token &tok, uint32_t line, uint32_t pos) {
   char c;
   TokenValue value;
   std::string &s = value.emplace<std::string>();
@@ -217,50 +215,45 @@ bool Lexer::HandleIdentifier(Token &tok) {
     kind = TOK_IDENTIFIER;
   }
 
-  uint32_t pos_start = mPos + 1;
-  mPos += s.length();
+  uint32_t pos_start = pos + 1;
+  uint32_t pos_end = pos_start + s.length() - 1;
 
-  tok = MakeToken(mLine, mLine, pos_start, mPos, kind, value);
+  tok = MakeToken(line, line, pos_start, pos_end, kind, value);
 
   return true;
 }
 
-bool Lexer::HandleInt(Token &tok) {
+bool Lexer::HandleInt(Token &tok, uint32_t line, uint32_t pos) {
   int file_pos_start = mFileStream.tellg();
   char c = mFileStream.get();
-  uint32_t pos_start = mPos + 1;
+  uint32_t pos_start = ++pos;
 
   if (c == '0' && isdigit(mFileStream.peek())) {
-    tok = ErrorToken(mLine, mLine, pos_start, pos_start);
+    tok = ErrorToken(line, line, pos_start, pos_start);
     mFileStream.seekg(file_pos_start);
     return false;
   } else if (c == '0') {
-    tok = MakeToken(
-      mLine, mLine, pos_start, pos_start, TOK_INT_LITERAL, TokenValue(0));
-    mPos++;
+    tok = MakeToken(line, line, pos_start, pos_start, TOK_INT_LITERAL, TokenValue(0));
     return true;
   }
 
   TokenValue value;
   int &i = value.emplace<int>();
   i = c - '0';
-  int pos = 1;
   while ((c = mFileStream.get()) && isdigit(c)) {
     i = (i * 10) + (c - '0');
     pos++;
   }
   mFileStream.unget();
 
-  mPos += pos;
-
-  tok = MakeToken(mLine, mLine, pos_start, mPos, TOK_INT_LITERAL, value);
+  tok = MakeToken(line, line, pos_start, pos, TOK_INT_LITERAL, value);
 
   return true;
 }
 
-bool Lexer::HandleFloat(Token &tok) {
+bool Lexer::HandleFloat(Token &tok, uint32_t line, uint32_t pos) {
   int file_pos_start = mFileStream.tellg();
-  uint32_t pos_start = mPos + 1;
+  uint32_t pos_start = ++pos;
 
   char c = mFileStream.get();
   if (c == '0' && mFileStream.peek() != '.') {
@@ -276,7 +269,7 @@ bool Lexer::HandleFloat(Token &tok) {
 
   if (c != '.') {
     uint32_t pos_end = pos_start + (s.length() - 1);
-    tok = ErrorToken(mLine, mLine, pos_start, pos_end);
+    tok = ErrorToken(line, line, pos_start, pos_end);
     mFileStream.seekg(file_pos_start);
     return false;
   }
@@ -293,16 +286,16 @@ bool Lexer::HandleFloat(Token &tok) {
   f = atof(s.c_str());
   std::cout << "DEBUG: parsed float " << f << " from string " << s << '\n';
 
-  mPos += s.length();
+   pos += (s.length() - 1);
 
-  tok = MakeToken(mLine, mLine, pos_start, mPos, TOK_FLOAT_LITERAL, value);
+  tok = MakeToken(line, line, pos_start, pos, TOK_FLOAT_LITERAL, value);
 
   return true;
 }
 
-bool Lexer::HandleString(Token &tok) {
+bool Lexer::HandleString(Token &tok, uint32_t line, uint32_t pos) {
   int file_pos_start = mFileStream.tellg();
-  uint32_t pos_start = mPos + 1;
+  uint32_t pos_start = ++pos;
 
   TokenValue value;
   std::string &str = value.emplace<std::string>();
@@ -313,53 +306,52 @@ bool Lexer::HandleString(Token &tok) {
   }
 
   if (c != '"') {
-    tok = ErrorToken(mLine, mLine, pos_start, pos_start);
+    tok = ErrorToken(line, line, pos_start, pos_start);
     mFileStream.seekg(file_pos_start);
     return false;
   }
 
-  uint32_t pos_end = pos_start + str.length();
-  mPos += str.length() + 1;
+  pos += str.length();
 
-  tok = MakeToken(mLine, mLine, pos_start, pos_end, TOK_STRING, value);
+  tok = MakeToken(line, line, pos_start, pos, TOK_STRING, value);
 
   return true;
 }
 
-bool Lexer::HandleOperator(Token &tok) {
+bool Lexer::HandleOperator(Token &tok, uint32_t line, uint32_t pos) {
   char c = mFileStream.peek();
 
   TokenKind kind = IsOperator(c);
   if (kind == TOK_ERROR) {
-    tok = ErrorToken(mLine, mLine, mPos, mPos);
+    tok = ErrorToken(line, line, pos, pos);
     return false;
   }
 
   TokenValue value;
   char &punc = value.emplace<char>();
   punc = mFileStream.get();
-  mPos++;
+  pos++;
 
-  tok = MakeToken(mLine, mLine, mPos, mPos, kind, value);
+  tok = MakeToken(line, line, pos, pos, kind, value);
 
   return true;
 }
 
-bool Lexer::HandlePunctuation(Token &tok) {
+bool Lexer::HandlePunctuation(Token &tok, uint32_t line, uint32_t pos) {
   char c = mFileStream.peek();
 
   TokenKind kind = IsPunctuation(c);
   if (kind == TOK_ERROR) {
-    tok = ErrorToken(mLine, mLine, mPos, mPos);
+    tok = ErrorToken(line, line, pos, pos);
     return false;
   }
 
   TokenValue value;
   char &punc = value.emplace<char>();
   punc = mFileStream.get();
-  mPos++;
+  pos++;
 
-  tok = MakeToken(mLine, mLine, mPos, mPos, kind, value);
+  tok = MakeToken(line, line, pos, pos, kind, value);
   return true;
 }
 

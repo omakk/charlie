@@ -86,21 +86,24 @@ public:
   Lexer(const std::string &file);
   ~Lexer();
 
-  // Sets |tok| to the next token.
+  // Sets `tok` to the next token and advances the lexer.
   //
-  // If an error occured during lexing then |tok| will have kind TOK_ERROR.
-  // If we reached EOF then |tok| will have kind TOK_EOF.
+  // If an error occured during lexing then `tok` will have kind TOK_ERROR.
+  // If we reached EOF then `tok` will have kind TOK_EOF.
   void GetNextToken(Token &tok);
-  // Returns the next token
-  //
-  // Return value will have kind TOK_ERROR on error
-  // Return value will have kind TOK_EOF on EOF
-  Token GetNextToken();
+  Token GetNextToken() { Token t; GetNextToken(t); return t;}
 
-  // Sets |tok| to the last successful token.
-  void GetToken(Token &tok);
-  // Returns the last successful token
-  Token GetToken();
+  // Sets `tok` to the next token but does not advance the lexer.
+  //
+  // If an error occured during lexing then `tok` will have kind TOK_ERROR.
+  // If we reached EOF then `tok` will have kind TOK_EOF.
+  void PeekNextToken(Token &tok);
+  Token PeekNextToken() { Token t; PeekNextToken(t); return t;}
+
+  // Sets `tok` to the last successfully lexed token.
+  void GetToken(Token &tok) { tok = mLastToken; }
+  // Returns the last successfully lexed token
+  Token GetToken() { return mLastToken; }
 
   // Gets the next token and compares its kind with |kind|.
   // |tok| is set to the next token.
@@ -165,9 +168,12 @@ private:
 
   Token mLastToken;
 
+  // Advances the lexer forward one token and assigns it to `tok`
+  bool Advance(Token &tok, uint32_t line, uint32_t pos);
+
   // Skip whitespaces where next character to be read is the first
   // non-whitespace character
-  void SkipWhitespace();
+  void SkipWhitespace(uint32_t *line, uint32_t *pos);
 
   TokenKind IsKeyword(const char *input) const noexcept;
   TokenKind IsPunctuation(const char input) const noexcept;
@@ -175,12 +181,12 @@ private:
 
   // Handle an identifier.
   // This also includes checking to see if the identifier is also a keyword
-  bool HandleIdentifier(Token &tok);
-  bool HandleFloat(Token &tok);
-  bool HandleInt(Token &tok);
-  bool HandleString(Token &tok);
-  bool HandleOperator(Token &tok);
-  bool HandlePunctuation(Token &tok);
+  bool HandleIdentifier(Token &tok, uint32_t line, uint32_t pos);
+  bool HandleFloat(Token &tok, uint32_t line, uint32_t pos);
+  bool HandleInt(Token &tok, uint32_t line, uint32_t pos);
+  bool HandleString(Token &tok, uint32_t line, uint32_t pos);
+  bool HandleOperator(Token &tok, uint32_t line, uint32_t pos);
+  bool HandlePunctuation(Token &tok, uint32_t line, uint32_t pos);
 
 };  // class Lexer
 
