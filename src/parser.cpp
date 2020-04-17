@@ -199,8 +199,8 @@ std::unique_ptr<StructDefinition> Parser::ParseStructDefinition(std::string stru
   }
   print_tok(tok);
 
-  std::vector<std::string> members;
-  // ParseStructMembers();
+  std::vector<StructDefinition::StructMember> members;
+  ParseStructMembers(members);
 
   tok = mLexer.GetNextToken();
   if (tok.kind != TOK_BRACE_RIGHT) {
@@ -213,6 +213,51 @@ std::unique_ptr<StructDefinition> Parser::ParseStructDefinition(std::string stru
   print_tok(tok);
 
   return std::make_unique<StructDefinition>(std::move(struct_name), std::move(members));
+}
+
+/*
+ * StructMemberList ::= IDENTIFIER ':' IDENTIFIER | { IDENTIFIER ':' IDENFITIER "," }
+ */
+void Parser::ParseStructMembers(std::vector<StructDefinition::StructMember> &members) {
+    // TODO: Handle non-comma-terminated case
+    for(;;) if(Token tok = mLexer.PeekNextToken(); tok.kind != TOK_BRACE_RIGHT) {
+      if (bool res = mLexer.Expect(TOK_IDENTIFIER, tok); !res) {
+        warn("[Parse Error] %s:<%d:%d>: Expected struct member identifier\n",
+             mFileName.c_str(),
+             tok.span.line_start,
+             tok.span.pos_start);
+        break;
+      }
+      auto member_name = std::get<std::string>(tok.value);
+
+      if (bool res = mLexer.Expect(TOK_COLON, tok); !res) {
+        warn("[Parse Error] %s:<%d:%d>: Expected ':'\n",
+             mFileName.c_str(),
+             tok.span.line_start,
+             tok.span.pos_start);
+        break;
+      }
+
+      if (bool res = mLexer.Expect(TOK_IDENTIFIER, tok); !res) {
+        warn("[Parse Error] %s:<%d:%d>: Expected struct member type\n",
+             mFileName.c_str(),
+             tok.span.line_start,
+             tok.span.pos_start);
+        break;
+      }
+      auto type = std::get<std::string>(tok.value);
+
+      if (bool res = mLexer.Expect(TOK_COMMA, tok); !res) {
+        warn("[Parse Error] %s:<%d:%d>: Expected ','\n",
+             mFileName.c_str(),
+             tok.span.line_start,
+             tok.span.pos_start);
+        break;
+      }
+
+      std::cout << "DEBUG: Parsed struct member: " << member_name << " " << type << '\n';
+      members.emplace_back(member_name, type);
+    } else break;
 }
 
 /*

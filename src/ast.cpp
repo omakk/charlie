@@ -49,12 +49,15 @@ void AstDisplayVisitor::Visit(ProcedureDefinition &proc_def) {
 
 void AstDisplayVisitor::Visit(StructDefinition &struct_def) {
   std::stringstream s;
-  s << std::string(mIndent, ' ') <<  struct_def.Name() << ":: struct {";
-  if (struct_def.Members().empty()) {
-    s << "}\n";
-  } else {
-    // TODO: Handle struct members display
+  s << std::string(mIndent, ' ') <<  struct_def.Name() << " :: struct {\n";
+  // TODO: Handle non-comma-terminated case
+  mIndent += kDefaultIndentSpaces;
+  for (auto &member : struct_def.Members()) {
+    s << std::string(mIndent, ' ')
+      <<  member.name << ": " << member.type << ",\n";
   }
+  mIndent -= kDefaultIndentSpaces;
+  s << "}\n";
   mDisplay << s.str();
 }
 
@@ -306,7 +309,7 @@ void ProcedureDefinition::Accept(AstVisitor &v) {
 }
 
 StructDefinition::StructDefinition(std::string struct_name,
-                                   std::vector<std::string> members,
+                                   std::vector<StructDefinition::StructMember> members,
                                    DeclKind kind) :
     TopLevelDeclaration(kind),
     mStructName(std::move(struct_name)), mMembers(std::move(members)) {}

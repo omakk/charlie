@@ -179,14 +179,23 @@ private:
 
 class StructDefinition : public TopLevelDeclaration, public Ast {
 public:
+  struct StructMember {
+      std::string name;
+      std::string type;
+      StructMember() = default;
+      StructMember(std::string &member_name, std::string &type) :
+          name(member_name), type(type) {}
+  };
+
   StructDefinition(std::string struct_name,
-                   std::vector<std::string> members,
+                   std::vector<StructMember> members,
                    DeclKind kind = STRUCT_DEF);
+
 
   const std::string &Name() const {
       return mStructName;
   }
-  const std::vector<std::string> &Members() const {
+  const std::vector<StructMember> &Members() const {
       return mMembers;
   }
 
@@ -194,7 +203,7 @@ public:
 
 private:
   std::string mStructName;
-  std::vector<std::string> mMembers;
+  std::vector<StructMember> mMembers;
 };
 
 class Block : public Ast {

@@ -35,9 +35,9 @@ public:
   std::unique_ptr<StructDefinition> ParseStructDefinition(std::string struct_name);
 
   /*
-   * StructMemberList ::= IDENTIFIER IDENTIFIER | { IDENTIFIER IDENFITIER "," }
+   * StructMemberList ::= IDENTIFIER ':' IDENTIFIER | { IDENTIFIER ':' IDENFITIER "," }
    */
-  //std::unique_ptr<StructMemberList> ParseStructMembers();
+  void ParseStructMembers(std::vector<StructDefinition::StructMember> &members);
 
   /*
    * Block ::= "{" { Statement } "}"
